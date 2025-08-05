@@ -1,0 +1,194 @@
+// src/App.tsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider, useAuth } from './lib/auth-context';
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { CreateCampPage } from './pages/CreateCampPage';
+import { EditCampPage } from './pages/EditCampPage';
+import { CampsPage } from './pages/CampsPage';
+import { CampDetailPage } from './pages/CampDetailPage';
+import { CampManagementPage } from './pages/CampManagementPage';
+import { PublicRegistrationPage } from './pages/PublicRegistrationPage';
+import { LinkRegistrationPage } from './pages/LinkRegistrationPage';
+import { RegistrationLinksManagementPage } from './pages/RegistrationLinksManagementPage';
+import { CustomFieldsManagementPage } from './pages/CustomFieldsManagementPage';
+import { ChurchesManagementPage } from './pages/ChurchesManagementPage';
+import { CategoriesManagementPage } from './pages/CategoriesManagementPage';
+import { LoadingSpinner } from './components/ui/loading-spinner';
+
+// Create a query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Protected route wrapper
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Public route wrapper (redirect if already logged in)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+      
+      {/* Public registration routes - no auth required */}
+      <Route
+        path="/camps/:campId/register"
+        element={<PublicRegistrationPage />}
+      />
+      
+      <Route
+        path="/register/:linkToken"
+        element={<LinkRegistrationPage />}
+      />
+
+      {/* Protected routes */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/camps/create"
+        element={
+          <ProtectedRoute>
+            <CreateCampPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/camps"
+        element={
+          <ProtectedRoute>
+            <CampsPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/camps/:campId"
+        element={
+          <ProtectedRoute>
+            <CampDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/camps/:campId/edit"
+        element={
+          <ProtectedRoute>
+            <EditCampPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/camps/:campId/manage"
+        element={
+          <ProtectedRoute>
+            <CampManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/camps/:campId/manage/registration-links"
+        element={
+          <ProtectedRoute>
+            <RegistrationLinksManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/camps/:campId/manage/custom-fields"
+        element={
+          <ProtectedRoute>
+            <CustomFieldsManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/camps/:campId/manage/churches"
+        element={
+          <ProtectedRoute>
+            <ChurchesManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/camps/:campId/manage/categories"
+        element={
+          <ProtectedRoute>
+            <CategoriesManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Default redirect */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      
+      {/* Catch all - redirect to dashboard */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <div className="min-h-screen bg-background">
+            <AppRoutes />
+          </div>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

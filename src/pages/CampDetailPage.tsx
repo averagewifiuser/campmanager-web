@@ -1,0 +1,545 @@
+// src/pages/CampDetailPage.tsx
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  ArrowLeft, 
+  Users, 
+  DollarSign, 
+  Calendar,
+  MapPin,
+  UserCheck,
+  Settings,
+  Search,
+  Download,
+  TrendingUp
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { RegistrationsTable } from '@/components/registrations/RegistrationsTable';
+import { useCamp } from '@/hooks/useCamps';
+import { useCampRegistrations, useCampStats } from '@/hooks/useRegistrations';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import type { Registration } from '@/lib/types';
+
+export const CampDetailPage: React.FC = () => {
+  const { campId } = useParams<{ campId: string }>();
+  const navigate = useNavigate();
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [checkinFilter, setCheckinFilter] = useState<string>('all');
+  
+  // Data fetching
+  const { data: camp, isLoading: campLoading, error: campError } = useCamp(campId!);
+  const { data: registrations = [], isLoading: registrationsLoading } = useCampRegistrations(campId!);
+  const { data: stats, isLoading: statsLoading } = useCampStats(campId!);
+
+  // Early returns for loading and error states
+  if (!campId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-destructive">Invalid camp ID</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/camps')}>
+              Back to Camps
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (campLoading || statsLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (campError || !camp) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-destructive mb-4">Failed to load camp details</p>
+            <div className="space-x-2">
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+              <Button onClick={() => navigate('/camps')}>
+                Back to Camps
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Helper functions
+  const getCampStatus = () => {
+    const now = new Date();
+    const startDate = new Date(camp.start_date);
+    const endDate = new Date(camp.end_date);
+    const registrationDeadline = new Date(camp.registration_deadline);
+
+    if (!camp.is_active) {
+      return { label: 'Inactive', variant: 'secondary' as const };
+    }
+    if (now > endDate) {
+      return { label: 'Completed', variant: 'outline' as const };
+    }
+    if (now >= startDate) {
+      return { label: 'In Progress', variant: 'default' as const };
+    }
+    if (now > registrationDeadline) {
+      return { label: 'Registration Closed', variant: 'destructive' as const };
+    }
+    return { label: 'Open for Registration', variant: 'default' as const };
+  };
+
+  // Filter registrations
+  const filteredRegistrations = registrations.filter((registration: Registration) => {
+    const fullName = `${registration.surname} ${registration.middle_name} ${registration.last_name}`.toLowerCase();
+    const email = registration.email?.toLowerCase() || '';
+    const phone = registration.phone_number;
+    
+    const matchesSearch = searchTerm === '' || 
+      fullName.includes(searchTerm.toLowerCase()) ||
+      email.includes(searchTerm.toLowerCase()) ||
+      phone.includes(searchTerm);
+    
+    const matchesPayment = paymentFilter === 'all' ||
+      (paymentFilter === 'paid' && registration.has_paid) ||
+      (paymentFilter === 'unpaid' && !registration.has_paid);
+    
+    const matchesCheckin = checkinFilter === 'all' ||
+      (checkinFilter === 'checked-in' && registration.has_checked_in) ||
+      (checkinFilter === 'not-checked-in' && !registration.has_checked_in);
+    
+    return matchesSearch && matchesPayment && matchesCheckin;
+  });
+
+  const status = getCampStatus();
+  const capacityUsed = Math.round((registrations.length / camp.capacity) * 100);
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-white sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/camps')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Camps
+              </Button>
+              <div>
+                <h1 className="text-xl font-semibold">{camp.name}</h1>
+                <Badge variant={status.variant} className="mt-1">
+                  {status.label}
+                </Badge>
+              </div>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/camps/${campId}/edit`)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Edit Camp
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6">
+        <div className="space-y-6">
+          {/* Camp Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Duration</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-bold">
+                  {formatDate(camp.start_date)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  to {formatDate(camp.end_date)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Location</CardTitle>
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-bold">{camp.location}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Base Fee</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-bold">
+                  {formatCurrency(camp.base_fee)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Capacity</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-bold">
+                  {registrations.length} / {camp.capacity}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {capacityUsed}% full
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Statistics Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(stats.total_revenue)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Paid</CardTitle>
+                  <UserCheck className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats.paid_registrations}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    of {stats.total_registrations}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Unpaid</CardTitle>
+                  <DollarSign className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    {stats.unpaid_registrations}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    need payment
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Checked In</CardTitle>
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.checked_in_count}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    arrived at camp
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Utilization</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats.capacity_utilization}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    of capacity
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Content Tabs */}
+          <Tabs defaultValue="registrations" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="registrations">
+                Registrations ({filteredRegistrations.length})
+              </TabsTrigger>
+              <TabsTrigger value="analytics">
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                Settings
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Registrations Tab */}
+            <TabsContent value="registrations" className="space-y-4">
+              {/* Search and Filters */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Manage Registrations</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // CSV export functionality
+                        const csvData = filteredRegistrations.map(reg => ({
+                          name: `${reg.surname} ${reg.middle_name} ${reg.last_name}`.trim(),
+                          age: reg.age,
+                          email: reg.email || 'N/A',
+                          phone: reg.phone_number,
+                          amount: reg.total_amount,
+                          paid: reg.has_paid ? 'Yes' : 'No',
+                          checkedIn: reg.has_checked_in ? 'Yes' : 'No',
+                          registrationDate: formatDate(reg.registration_date)
+                        }));
+                        
+                        const headers = Object.keys(csvData[0] || {});
+                        const csvContent = [
+                          headers.join(','),
+                          ...csvData.map(row => Object.values(row).map(field => `"${field}"`).join(','))
+                        ].join('\n');
+                        
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${camp.name}-registrations.csv`;
+                        link.click();
+                        window.URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-4 sm:flex-row">
+                    {/* Search */}
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search participants..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Payment Filter */}
+                    <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Payment status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Payments</SelectItem>
+                        <SelectItem value="paid">Paid Only</SelectItem>
+                        <SelectItem value="unpaid">Unpaid Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Check-in Filter */}
+                    <Select value={checkinFilter} onValueChange={setCheckinFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Check-in status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Participants</SelectItem>
+                        <SelectItem value="checked-in">Checked In</SelectItem>
+                        <SelectItem value="not-checked-in">Not Checked In</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Registrations Table */}
+              <Card>
+                <CardContent className="p-0">
+                  <RegistrationsTable 
+                    registrations={filteredRegistrations}
+                    isLoading={registrationsLoading}
+                    onEditRegistration={(registration) => {
+                      console.log('Edit registration:', registration);
+                      // TODO: Open edit dialog
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-4">
+              {stats && stats.registration_by_category && stats.registration_by_church ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Registrations by Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(stats.registration_by_category).map(([category, count]) => (
+                          <div key={category} className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{category}</span>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-20 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full" 
+                                  style={{ 
+                                    width: `${Math.round((count / stats.total_registrations) * 100)}%` 
+                                  }}
+                                />
+                              </div>
+                              <span className="text-sm font-bold w-8 text-right">{count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Registrations by Church</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(stats.registration_by_church).map(([church, count]) => (
+                          <div key={church} className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{church}</span>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-20 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full" 
+                                  style={{ 
+                                    width: `${Math.round((count / stats.total_registrations) * 100)}%` 
+                                  }}
+                                />
+                              </div>
+                              <span className="text-sm font-bold w-8 text-right">{count}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-muted-foreground">No analytics data available</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Camp Management</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button 
+                      className="w-full justify-start"
+                      onClick={() => navigate(`/camps/${campId}/edit`)}
+                    >
+                      Edit Camp Details
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => navigate(`/camps/${campId}/manage`)}
+                    >
+                      Manage Churches & Categories
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Registration Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => navigate(`/camps/${campId}/manage`)}
+                    >
+                      Registration Links
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => navigate(`/camps/${campId}/manage`)}
+                    >
+                      Custom Fields
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      Email Templates
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+    </div>
+  );
+};

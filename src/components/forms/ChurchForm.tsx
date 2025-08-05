@@ -1,0 +1,130 @@
+// src/components/forms/ChurchForm.tsx
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Save, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useChurches } from '@/hooks/useChurches';
+import type { Church } from '@/lib/types';
+
+const churchSchema = z.object({
+  name: z.string().min(3, 'Church name must be at least 3 characters'),
+});
+
+type ChurchFormData = z.infer<typeof churchSchema>;
+
+interface ChurchFormProps {
+  campId: string;
+  church?: Church; // For editing existing church
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export const ChurchForm: React.FC<ChurchFormProps> = ({
+  campId,
+  church,
+  onSuccess,
+  onCancel
+}) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { createChurch, updateChurch } = useChurches(campId);
+
+  const form = useForm<ChurchFormData>({
+    resolver: zodResolver(churchSchema),
+    defaultValues: {
+      name: church?.name || '',
+    },
+  });
+
+  const onSubmit = async (data: ChurchFormData) => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      if (church) {
+        // Update existing church
+        await updateChurch({
+          id: church.id,
+          data: { name: data.name }
+        });
+      } else {
+        // Create new church
+        await createChurch({ name: data.name });
+      }
+      
+      onSuccess?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save church');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Church Name</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. Central Baptist Church"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-2">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          )}
+          
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                {church ? 'Updating...' : 'Adding...'}
+              </>
+            ) : (
+              <>
+                {church ? <Save className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                {church ? 'Update Church' : 'Add Church'}
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
