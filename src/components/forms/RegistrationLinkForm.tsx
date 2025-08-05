@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, Plus, Calendar, Link2, Copy } from 'lucide-react';
+import { Save, Calendar, Link2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,

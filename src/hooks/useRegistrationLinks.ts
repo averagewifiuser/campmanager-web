@@ -1,7 +1,7 @@
 // src/hooks/useRegistrationLinks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { registrationLinksApi, handleApiError } from '@/lib/api';
-import type { RegistrationLink, CreateRegistrationLinkRequest } from '@/lib/types';
+import type { CreateRegistrationLinkRequest } from '@/lib/types';
 
 // Query keys
 export const registrationLinkKeys = {

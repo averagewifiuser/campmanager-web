@@ -1,9 +1,9 @@
 // src/pages/PublicRegistrationPage.tsx
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PublicRegistrationForm } from '@/components/public/PublicRegistrationForm';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';

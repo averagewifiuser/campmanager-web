@@ -1,7 +1,7 @@
 // src/hooks/useChurches.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { churchesApi, handleApiError } from '@/lib/api';
-import type { Church } from '@/lib/types';
+// import type { Church } from '@/lib/types';
 
 // Query keys
 export const churchKeys = {

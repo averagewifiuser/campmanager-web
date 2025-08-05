@@ -1,5 +1,4 @@
 // src/pages/LinkRegistrationPage.tsx
-import { useParams } from 'react-router-dom';
 import { PublicRegistrationPage } from './PublicRegistrationPage';
 
 export const LinkRegistrationPage: React.FC = () => {

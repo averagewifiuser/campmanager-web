@@ -1,7 +1,7 @@
 // src/hooks/useCategories.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { categoriesApi, handleApiError } from '@/lib/api';
-import type { Category, CreateCategoryRequest } from '@/lib/types';
+import type { CreateCategoryRequest } from '@/lib/types';
 
 // Query keys
 export const categoryKeys = {

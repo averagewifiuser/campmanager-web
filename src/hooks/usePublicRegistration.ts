@@ -2,9 +2,9 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { publicApi, handleApiError } from '@/lib/api';
 import type { 
-  PublicRegistrationData, 
+  // PublicRegistrationData, 
   RegistrationFormData, 
-  RegistrationLinkStatus 
+  // RegistrationLinkStatus 
 } from '@/lib/types';
 
 // Query keys for public registration

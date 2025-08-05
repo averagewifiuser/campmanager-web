@@ -60,8 +60,9 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config;
-    
+    // @ts-ignore
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // @ts-ignore
       originalRequest._retry = true;
       
       const refreshToken = tokenManager.getRefreshToken();

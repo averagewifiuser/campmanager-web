@@ -1,7 +1,7 @@
 // src/hooks/useRegistrations.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { registrationsApi, campsApi, handleApiError } from '@/lib/api';
-import type { Registration, CampStats } from '@/lib/types';
+import type { Registration } from '@/lib/types';
 
 // Query keys
 export const registrationKeys = {

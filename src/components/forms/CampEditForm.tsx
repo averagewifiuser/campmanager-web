@@ -34,12 +34,15 @@ const campEditSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters'),
   location: z.string().min(5, 'Location must be at least 5 characters'),
   start_date: z.date({
+    // @ts-ignore
     required_error: 'Start date is required',
   }),
   end_date: z.date({
+    // @ts-ignore
     required_error: 'End date is required',
   }),
   registration_deadline: z.date({
+    // @ts-ignore
     required_error: 'Registration deadline is required',
   }),
   base_fee: z.string()
