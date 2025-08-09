@@ -78,7 +78,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Registrations</CardTitle>
@@ -117,7 +117,7 @@ export const DashboardPage: React.FC = () => {
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
 
           {/* Quick Actions */}
           <Card>
@@ -143,10 +143,10 @@ export const DashboardPage: React.FC = () => {
                   <span>Manage Camps</span>
                 </Button>
                 
-                <Button variant="outline" className="h-20 flex flex-col space-y-2">
+                {/* <Button variant="outline" className="h-20 flex flex-col space-y-2">
                   <Calendar className="h-6 w-6" />
                   <span>Manage Events</span>
-                </Button>
+                </Button> */}
               </div>
             </CardContent>
           </Card>
