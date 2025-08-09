@@ -130,6 +130,13 @@ export const PublicRegistrationPage: React.FC = () => {
                     {registrationResult.surname} {registrationResult.middle_name} {registrationResult.last_name}
                   </span>
                 </div>
+
+                <div className="flex justify-between">
+                  <span className="text-sm text-green-700">Camper Code:</span>
+                  <span className="text-sm font-medium">
+                    {registrationResult.camper_code}
+                  </span>
+                </div>
                 
                 <div className="flex justify-between">
                   <span className="text-sm text-green-700">Registration Fee:</span>

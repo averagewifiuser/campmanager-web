@@ -222,6 +222,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                   onCheckedChange={handleSelectAll}
                 />
               </TableHead>
+              <TableHead>Camper Code</TableHead>
               <TableHead>Participant</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Emergency Contact</TableHead>
@@ -243,7 +244,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                     }
                   />
                 </TableCell>
-                
+                <TableCell>{registration.camper_code}</TableCell>
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium">

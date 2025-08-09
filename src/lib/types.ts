@@ -117,6 +117,7 @@ export interface Registration {
   registration_date: string;
   created_at: string;
   updated_at: string;
+  camper_code?: string;
 }
 
 // API Response wrapper
