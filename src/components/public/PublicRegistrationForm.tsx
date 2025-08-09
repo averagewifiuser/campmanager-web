@@ -84,7 +84,7 @@ const createRegistrationSchema = (customFields: CustomField[]) => {
     middle_name: z.string().optional(),
     last_name: z.string().min(2, 'Last name must be at least 2 characters'),
     age: z.number().min(1, 'Age must be at least 1').max(120, 'Age must be realistic'),
-    email: z.string().email('Invalid email format').optional().or(z.literal('')),
+    email: z.string().email('Invalid email format'),
     phone_number: z.string()
       .min(10, 'Phone number is required')
       .refine(isValidGhanaPhone, 'Please enter a valid Ghana phone number'),
@@ -421,7 +421,7 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormLabel>Email *</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="john@example.com" {...field} />
                         </FormControl>
