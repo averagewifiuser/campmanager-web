@@ -16,7 +16,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -32,7 +31,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useCamp } from '@/hooks/useCamps';
 import { useChurches } from '@/hooks/useChurches';
@@ -60,18 +58,30 @@ export const ChurchesManagementPage: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
   
-  // Form states
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Pagination and search state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [search, setSearch] = useState("");
 
   // Data fetching
   const { data: camp, isLoading: campLoading } = useCamp(campId!);
   const { 
     data: churches = [], 
     isLoading: churchesLoading,
-    createChurch,
-    updateChurch,
     deleteChurch
   } = useChurches(campId!);
+
+  // Search and pagination logic
+  const filteredChurches = churches.filter((church: Church) =>
+    church.name.toLowerCase().includes(search.toLowerCase()) ||
+    church.area.toLowerCase().includes(search.toLowerCase()) ||
+    church.district.toLowerCase().includes(search.toLowerCase())
+  );
+  const churchesPerPage = 15;
+  const totalPages = Math.ceil(filteredChurches.length / churchesPerPage);
+  const paginatedChurches = filteredChurches.slice(
+    (currentPage - 1) * churchesPerPage,
+    currentPage * churchesPerPage
+  );
 
   if (!campId) {
     return (
@@ -214,87 +224,131 @@ export const ChurchesManagementPage: React.FC = () => {
               <CardTitle>Churches List</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Search input */}
+              <div className="mb-4 flex items-center">
+                <Input
+                  type="text"
+                  placeholder="Search by name, area, or district..."
+                  value={search}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="max-w-xs"
+                />
+              </div>
               {churchesLoading ? (
                 <div className="flex justify-center py-8">
                   <LoadingSpinner />
                 </div>
-              ) : churches.length === 0 ? (
+              ) : filteredChurches.length === 0 ? (
                 <div className="text-center py-8">
                   <Church className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">No churches added yet</p>
+                  <p className="text-muted-foreground mb-4">No churches found</p>
                   <Button onClick={() => setIsCreateDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Your First Church
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {churches.map((church: Church) => (
-                    <div
-                      key={church.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Church className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <h3 className="font-medium">{church.name}</h3>
-                          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                            <span>Area: {church.area}</span>
-                            <span>District: {church.district}</span>
-                          </div>
-                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                            <span className="flex items-center">
-                              <Users className="h-4 w-4 mr-1" />
-                              {church.registration_count || 0} participants
-                            </span>
-                            <span>Added {formatDate(church.created_at)}</span>
+                <>
+                  <div className="space-y-3">
+                    {paginatedChurches.map((church: Church) => (
+                      <div
+                        key={church.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Church className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <h3 className="font-medium">{church.name}</h3>
+                            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                              <span>Area: {church.area}</span>
+                              <span>District: {church.district}</span>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                              <span className="flex items-center">
+                                <Users className="h-4 w-4 mr-1" />
+                                {church.registration_count || 0} participants
+                              </span>
+                              <span>Added {formatDate(church.created_at)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditDialog(church)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
                         
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Church</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{church.name}"? 
-                                {church.registration_count && church.registration_count > 0 && (
-                                  <span className="text-destructive">
-                                    {" "}This church has {church.registration_count} registered participants.
-                                  </span>
-                                )}
-                                {" "}This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteChurch(church)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Delete Church
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(church)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Church</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{church.name}"? 
+                                  {church.registration_count && church.registration_count > 0 && (
+                                    <span className="text-destructive">
+                                      {" "}This church has {church.registration_count} registered participants.
+                                    </span>
+                                  )}
+                                  {" "}This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteChurch(church)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Delete Church
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  {/* Pagination controls */}
+                  <div className="flex justify-center mt-6 space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <Button
+                        key={i + 1}
+                        variant={currentPage === i + 1 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(i + 1)}
+                      >
+                        {i + 1}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

@@ -19,7 +19,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Popover,
   PopoverContent,
@@ -167,6 +166,7 @@ export const CampEditForm: React.FC<CampEditFormProps> = ({
             <FormField
               control={form.control}
               name="description"
+              // @ts-ignore
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
