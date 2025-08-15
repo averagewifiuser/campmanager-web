@@ -218,6 +218,38 @@ export const CampManagementPage: React.FC = () => {
     return baseFee * (1 - discount);
   };
 
+  // Pagination helper
+  function getPaginationRange(current: number, total: number): (number | string)[] {
+    const maxPages = 10;
+    if (total <= maxPages) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const range: (number | string)[] = [];
+    const showLeft = 3;
+    const showRight = 3;
+    const showAround = 1;
+
+    // Always show first 3
+    for (let i = 1; i <= showLeft; i++) range.push(i);
+
+    let left = Math.max(current - showAround, showLeft + 1);
+    let right = Math.min(current + showAround, total - showRight);
+
+    if (left > showLeft + 1) range.push('...');
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < total - showRight) range.push('...');
+
+    // Always show last 3
+    for (let i = total - showRight + 1; i <= total; i++) range.push(i);
+
+    // Remove duplicates and sort
+    return Array.from(new Set(range)).filter(p => typeof p === 'string' || (p >= 1 && p <= total)).sort((a, b) => {
+      if (a === '...') return -1;
+      if (b === '...') return 1;
+      return (a as number) - (b as number);
+    });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -424,16 +456,20 @@ export const CampManagementPage: React.FC = () => {
                       >
                         Previous
                       </Button>
-                      {Array.from({ length: totalPages }, (_, i) => (
-                        <Button
-                          key={i + 1}
-                          variant={currentPage === i + 1 ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(i + 1)}
-                        >
-                          {i + 1}
-                        </Button>
-                      ))}
+                      {getPaginationRange(currentPage, totalPages).map((page, idx) =>
+                        typeof page === 'number' ? (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </Button>
+                        ) : (
+                          <span key={`ellipsis-${idx}`} className="px-2 py-1 text-muted-foreground select-none">...</span>
+                        )
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
