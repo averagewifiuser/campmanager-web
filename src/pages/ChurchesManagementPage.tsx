@@ -37,11 +37,14 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useCamp } from '@/hooks/useCamps';
 import { useChurches } from '@/hooks/useChurches';
 import { formatDate } from '@/lib/utils';
+import { ChurchForm } from '@/components/forms/ChurchForm';
 
 interface Church {
   id: string;
   name: string;
   camp_id: string;
+  area: string;
+  district: string;
   created_at: string;
   updated_at: string;
   // Additional fields that might come from stats
@@ -58,8 +61,6 @@ export const ChurchesManagementPage: React.FC = () => {
   const [selectedChurch, setSelectedChurch] = useState<Church | null>(null);
   
   // Form states
-  const [newChurchName, setNewChurchName] = useState('');
-  const [editChurchName, setEditChurchName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Data fetching
@@ -106,39 +107,7 @@ export const ChurchesManagementPage: React.FC = () => {
     );
   }
 
-  const handleCreateChurch = async () => {
-    if (!newChurchName.trim()) return;
-    
-    setIsSubmitting(true);
-    try {
-      await createChurch({ name: newChurchName.trim() });
-      setNewChurchName('');
-      setIsCreateDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to create church:', error);
-      // TODO: Show error toast
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditChurch = async () => {
-    if (!selectedChurch || !editChurchName.trim()) return;
-    
-    setIsSubmitting(true);
-    try {
-      // @ts-ignore
-      await updateChurch(selectedChurch.id, { name: editChurchName.trim() });
-      setEditChurchName('');
-      setSelectedChurch(null);
-      setIsEditDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update church:', error);
-      // TODO: Show error toast
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Remove old handleCreateChurch and handleEditChurch logic, now handled by ChurchForm
 
   const handleDeleteChurch = async (church: Church) => {
     try {
@@ -152,7 +121,6 @@ export const ChurchesManagementPage: React.FC = () => {
 
   const openEditDialog = (church: Church) => {
     setSelectedChurch(church);
-    setEditChurchName(church.name);
     setIsEditDialogOpen(true);
   };
 
@@ -192,32 +160,13 @@ export const ChurchesManagementPage: React.FC = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="church-name">Church Name</Label>
-                    <Input
-                      id="church-name"
-                      value={newChurchName}
-                      onChange={(e) => setNewChurchName(e.target.value)}
-                      placeholder="Enter church name"
-                      onKeyDown={(e) => e.key === 'Enter' && handleCreateChurch()}
-                    />
-                  </div>
+                  {/* Use ChurchForm for creation */}
+                  <ChurchForm
+                    campId={campId}
+                    onSuccess={() => setIsCreateDialogOpen(false)}
+                    onCancel={() => setIsCreateDialogOpen(false)}
+                  />
                 </div>
-                <DialogFooter>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreateChurch}
-                    disabled={!newChurchName.trim() || isSubmitting}
-                  >
-                    {isSubmitting ? 'Creating...' : 'Create Church'}
-                  </Button>
-                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -289,6 +238,10 @@ export const ChurchesManagementPage: React.FC = () => {
                         <Church className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <h3 className="font-medium">{church.name}</h3>
+                          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                            <span>Area: {church.area}</span>
+                            <span>District: {church.district}</span>
+                          </div>
                           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                             <span className="flex items-center">
                               <Users className="h-4 w-4 mr-1" />
@@ -353,36 +306,26 @@ export const ChurchesManagementPage: React.FC = () => {
             <DialogHeader>
               <DialogTitle>Edit Church</DialogTitle>
               <DialogDescription>
-                Update the church name.
+                Update the church details.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-church-name">Church Name</Label>
-                <Input
-                  id="edit-church-name"
-                  value={editChurchName}
-                  onChange={(e) => setEditChurchName(e.target.value)}
-                  placeholder="Enter church name"
-                  onKeyDown={(e) => e.key === 'Enter' && handleEditChurch()}
+              {/* Use ChurchForm for editing */}
+              {selectedChurch && (
+                <ChurchForm
+                  campId={campId}
+                  church={selectedChurch}
+                  onSuccess={() => {
+                    setIsEditDialogOpen(false);
+                    setSelectedChurch(null);
+                  }}
+                  onCancel={() => {
+                    setIsEditDialogOpen(false);
+                    setSelectedChurch(null);
+                  }}
                 />
-              </div>
+              )}
             </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleEditChurch}
-                disabled={!editChurchName.trim() || isSubmitting}
-              >
-                {isSubmitting ? 'Updating...' : 'Update Church'}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </main>

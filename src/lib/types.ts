@@ -28,6 +28,8 @@ export interface Church {
   id: string;
   name: string;
   camp_id: string;
+  area: string;
+  district: string;
   created_at: string;
   updated_at: string;
 }

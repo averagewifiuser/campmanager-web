@@ -1,5 +1,7 @@
 // src/components/forms/CampEditForm.tsx
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import 'quill/dist/quill.snow.css';
+import Quill from 'quill';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -73,6 +75,7 @@ export const CampEditForm: React.FC<CampEditFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const updateCampMutation = useUpdateCamp();
 
+  const quillRef = useRef<HTMLDivElement>(null);
   const form = useForm<CampEditFormData>({
     resolver: zodResolver(campEditSchema),
     defaultValues: {
@@ -86,6 +89,35 @@ export const CampEditForm: React.FC<CampEditFormProps> = ({
       capacity: camp.capacity.toString(),
     },
   });
+
+  // Initialize Quill editor
+  useEffect(() => {
+    if (!quillRef.current) return;
+    const quill = new Quill(quillRef.current, {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          ['link', 'image'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+        ],
+      },
+    });
+
+    quill.on('text-change', () => {
+      const content = quill.root.innerHTML;
+      form.setValue('description', content, { shouldValidate: true });
+    });
+
+    // Set initial value
+    quill.root.innerHTML = form.getValues('description') || '';
+
+    // Cleanup
+    return () => {
+      quill.off('text-change');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (data: CampEditFormData) => {
     try {
@@ -139,10 +171,19 @@ export const CampEditForm: React.FC<CampEditFormProps> = ({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea
-                      className="min-h-[100px]"
-                      {...field}
-                    />
+                    <div className="min-h-[180px]">
+                      <div
+                        ref={quillRef}
+                        style={{
+                          minHeight: 120,
+                          background: "#fff",
+                          borderRadius: 6,
+                          border: "1px solid #d1d5db",
+                          fontSize: 16,
+                        }}
+                        className="quill-editor"
+                      />
+                    </div>
                   </FormControl>
                   <FormDescription>
                     This will be shown to potential participants.

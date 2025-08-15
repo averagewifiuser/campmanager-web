@@ -23,7 +23,8 @@ export const useChurches = (campId: string) => {
 
   // Create church mutation
   const createChurch = useMutation({
-    mutationFn: (data: { name: string }) => churchesApi.createChurch(campId, data),
+    mutationFn: (data: { name: string; area: string; district: string }) =>
+      churchesApi.createChurch(campId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: churchKeys.list(campId) });
     },
@@ -34,7 +35,7 @@ export const useChurches = (campId: string) => {
 
   // Update church mutation
   const updateChurch = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name: string } }) => 
+    mutationFn: ({ id, data }: { id: string; data: { name: string; area: string; district: string } }) =>
       churchesApi.updateChurch(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: churchKeys.list(campId) });

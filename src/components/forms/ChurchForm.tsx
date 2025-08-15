@@ -19,6 +19,8 @@ import type { Church } from '@/lib/types';
 
 const churchSchema = z.object({
   name: z.string().min(3, 'Church name must be at least 3 characters'),
+  area: z.string().min(2, 'Area must be at least 2 characters'),
+  district: z.string().min(2, 'District must be at least 2 characters'),
 });
 
 type ChurchFormData = z.infer<typeof churchSchema>;
@@ -45,6 +47,8 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
     resolver: zodResolver(churchSchema),
     defaultValues: {
       name: church?.name || '',
+      area: church?.area || '',
+      district: church?.district || '',
     },
   });
 
@@ -53,15 +57,22 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
       setIsSubmitting(true);
       setError(null);
 
+      // Ensure area and district are never null or undefined
+      const safeData = {
+        name: data.name,
+        area: data.area ?? '',
+        district: data.district ?? ''
+      };
+
       if (church) {
         // Update existing church
         await updateChurch({
           id: church.id,
-          data: { name: data.name }
+          data: safeData
         });
       } else {
         // Create new church
-        await createChurch({ name: data.name });
+        await createChurch(safeData);
       }
       
       onSuccess?.();
@@ -84,6 +95,38 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
               <FormControl>
                 <Input
                   placeholder="e.g. Central Baptist Church"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="area"
+          render={({ field }) => (
+            <FormItem>
+<FormLabel>Area <span className="text-destructive">*</span></FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. North Kaneshie"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="district"
+          render={({ field }) => (
+            <FormItem>
+<FormLabel>District <span className="text-destructive">*</span></FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. Accra West"
                   {...field}
                 />
               </FormControl>
