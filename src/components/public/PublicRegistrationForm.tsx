@@ -840,6 +840,9 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                   <h3 className="text-lg font-medium">
                     Additional Information
                   </h3>
+                  <p className="text-sm text-muted-foreground">
+                  New branded T-shirts will be available on sale
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {custom_fields
                       .sort((a, b) => a.order - b.order)
