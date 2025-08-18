@@ -89,6 +89,7 @@ export interface RegistrationLink {
   created_by: string;
   created_at: string;
   updated_at: string;
+  form_description?: string;
 }
 
 export interface CreateRegistrationLinkRequest {
@@ -96,6 +97,7 @@ export interface CreateRegistrationLinkRequest {
   allowed_categories: string[];
   expires_at?: string;
   usage_limit?: number;
+  form_description?: string;
 }
 
 export interface Registration {
@@ -188,6 +190,15 @@ export interface PublicRegistrationData {
     expires_at?: string;
     usage_count: number;
     usage_limit?: number;
+    form_description?: string;
+  };
+  registration_link?: {
+    allowed_categories: string[];
+    name: string;
+    expires_at?: string;
+    usage_count: number;
+    usage_limit?: number;
+    form_description?: string;
   };
 }
 
@@ -196,6 +207,7 @@ export interface RegistrationFormData {
   surname: string;
   middle_name: string;
   last_name: string;
+  sex: string;
   age: number;
   email?: string;
   phone_number: string;

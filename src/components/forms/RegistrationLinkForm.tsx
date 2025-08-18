@@ -1,5 +1,7 @@
 // src/components/forms/RegistrationLinkForm.tsx
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import 'quill/dist/quill.snow.css';
+import Quill from 'quill';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +34,7 @@ const registrationLinkSchema = z.object({
   allowed_categories: z.array(z.string()).min(1, 'Select at least one category'),
   expires_at: z.date().optional(),
   usage_limit: z.string().optional(),
+  form_description: z.string().min(1, 'Description is required'),
 });
 
 type RegistrationLinkFormData = z.infer<typeof registrationLinkSchema>;
@@ -56,6 +59,9 @@ export const RegistrationLinkForm: React.FC<RegistrationLinkFormProps> = ({
   
   const { createLink, updateLink } = useRegistrationLinks(campId);
 
+  const quillRef = useRef<HTMLDivElement>(null);
+  const quillInstanceRef = useRef<Quill | null>(null);
+  
   const form = useForm<RegistrationLinkFormData>({
     resolver: zodResolver(registrationLinkSchema),
     defaultValues: {
@@ -63,20 +69,92 @@ export const RegistrationLinkForm: React.FC<RegistrationLinkFormProps> = ({
       allowed_categories: registrationLink?.allowed_categories || [],
       expires_at: registrationLink?.expires_at ? new Date(registrationLink.expires_at) : undefined,
       usage_limit: registrationLink?.usage_limit?.toString() || '',
+      form_description: registrationLink?.form_description || '',
     },
   });
+
+  // Helper function to get clean content from Quill
+  const getQuillContent = (quill: Quill): string => {
+    const content = quill.root.innerHTML;
+    // Check if Quill is empty (contains only empty paragraph or just whitespace)
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+    
+    if (textContent.trim() === '') {
+      return '';
+    }
+    
+    return content;
+  };
+
+  // Initialize Quill editor for form_description
+  useEffect(() => {
+    if (!quillRef.current || quillInstanceRef.current) return;
+    
+    const quill = new Quill(quillRef.current, {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          ['link', 'image'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+        ],
+      },
+    });
+
+    quillInstanceRef.current = quill;
+
+    // Set initial value if editing
+    const initialValue = form.getValues('form_description') || '';
+    if (initialValue) {
+      quill.root.innerHTML = initialValue;
+    }
+
+    // Sync Quill content to form state on changes
+    const handleTextChange = () => {
+      const content = getQuillContent(quill);
+      form.setValue('form_description', content, { shouldValidate: true, shouldDirty: true });
+    };
+
+    quill.on('text-change', handleTextChange);
+
+    // Set initial form value
+    const initialContent = getQuillContent(quill);
+    form.setValue('form_description', initialContent, { shouldValidate: true });
+
+    // Cleanup function
+    return () => {
+      if (quillInstanceRef.current) {
+        quillInstanceRef.current.off('text-change', handleTextChange);
+        quillInstanceRef.current = null;
+      }
+    };
+  }, [form]);
 
   const onSubmit = async (data: RegistrationLinkFormData) => {
     try {
       setIsSubmitting(true);
       setError(null);
 
+      // Ensure we get the latest content from Quill
+      let formDescription = data.form_description;
+      if (quillInstanceRef.current) {
+        formDescription = getQuillContent(quillInstanceRef.current);
+      }
+
+      // Debug log to see what we're sending
+      console.log('Form description being sent:', formDescription);
+
       const submitData = {
         name: data.name,
         allowed_categories: data.allowed_categories,
         usage_limit: data.usage_limit ? parseInt(data.usage_limit) : undefined,
         expires_at: data.expires_at?.toISOString(),
+        form_description: formDescription,
       };
+
+      console.log('Submit data:', submitData);
 
       if (registrationLink) {
         // Update existing registration link
@@ -286,6 +364,41 @@ export const RegistrationLinkForm: React.FC<RegistrationLinkFormProps> = ({
             {error}
           </div>
         )}
+
+        <FormField
+          control={form.control}
+          name="form_description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Form Description (Rich Text)</FormLabel>
+              <FormControl>
+                <div className="min-h-[120px]">
+                  <div
+                    ref={quillRef}
+                    style={{
+                      minHeight: 100,
+                      background: "#fff",
+                      borderRadius: 6,
+                      border: "1px solid #d1d5db",
+                      fontSize: 16,
+                    }}
+                    className="quill-editor"
+                  />
+                  {/* Hidden input to ensure form field is registered */}
+                  <input
+                    type="hidden"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                  />
+                </div>
+              </FormControl>
+              <FormDescription>
+                This description will be shown on the public registration form if provided.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2">
           {onCancel && (

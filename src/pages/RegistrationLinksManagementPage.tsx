@@ -1,5 +1,7 @@
 // src/pages/RegistrationLinksManagementPage.tsx
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import 'quill/dist/quill.snow.css';
+import Quill from 'quill';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -58,6 +60,7 @@ interface RegistrationLink {
   created_by: string;
   created_at: string;
   updated_at: string;
+  form_description?: string;
 }
 
 // @ts-ignore
@@ -74,9 +77,61 @@ interface LinkFormData {
   allowed_categories: string[];
   expires_at: string;
   usage_limit: string;
+  form_description: string;
 }
 
 export const RegistrationLinksManagementPage: React.FC = () => {
+  // Quill refs for create/edit dialogs
+  const createQuillRef = useRef<HTMLDivElement>(null);
+  const editQuillRef = useRef<HTMLDivElement>(null);
+
+  // Quill setup for Create Dialog
+  useEffect(() => {
+    if (!isCreateDialogOpen || !createQuillRef.current) return;
+    const quill = new Quill(createQuillRef.current, {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          ['link', 'image'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+        ],
+      },
+    });
+    quill.root.innerHTML = formData.form_description || '';
+    quill.on('text-change', () => {
+      const content = quill.root.innerHTML;
+      setFormData(prev => ({ ...prev, form_description: content }));
+    });
+    return () => {
+      quill.off('text-change');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreateDialogOpen]);
+
+  // Quill setup for Edit Dialog
+  useEffect(() => {
+    if (!isEditDialogOpen || !editQuillRef.current) return;
+    const quill = new Quill(editQuillRef.current, {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          ['link', 'image'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+        ],
+      },
+    });
+    quill.root.innerHTML = formData.form_description || '';
+    quill.on('text-change', () => {
+      const content = quill.root.innerHTML;
+      setFormData(prev => ({ ...prev, form_description: content }));
+    });
+    return () => {
+      quill.off('text-change');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditDialogOpen]);
   const { campId } = useParams<{ campId: string }>();
   const navigate = useNavigate();
   
@@ -90,7 +145,8 @@ export const RegistrationLinksManagementPage: React.FC = () => {
     name: '',
     allowed_categories: [],
     expires_at: '',
-    usage_limit: ''
+    usage_limit: '',
+    form_description: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -145,7 +201,8 @@ export const RegistrationLinksManagementPage: React.FC = () => {
       name: '',
       allowed_categories: [],
       expires_at: '',
-      usage_limit: ''
+      usage_limit: '',
+      form_description: ''
     });
   };
 
@@ -172,7 +229,8 @@ export const RegistrationLinksManagementPage: React.FC = () => {
         name: formData.name.trim(),
         allowed_categories: formData.allowed_categories,
         ...(formData.expires_at && { expires_at: new Date(formData.expires_at).toISOString() }),
-        ...(formData.usage_limit && { usage_limit: parseInt(formData.usage_limit) })
+        ...(formData.usage_limit && { usage_limit: parseInt(formData.usage_limit) }),
+        form_description: formData.form_description
       };
       
       await createLink(payload);
@@ -195,7 +253,8 @@ export const RegistrationLinksManagementPage: React.FC = () => {
         name: formData.name.trim(),
         allowed_categories: formData.allowed_categories,
         ...(formData.expires_at && { expires_at: new Date(formData.expires_at).toISOString() }),
-        ...(formData.usage_limit && { usage_limit: parseInt(formData.usage_limit) })
+        ...(formData.usage_limit && { usage_limit: parseInt(formData.usage_limit) }),
+        form_description: formData.form_description
       };
       // @ts-ignore
       await updateLink(selectedLink.id, payload);
@@ -236,7 +295,8 @@ export const RegistrationLinksManagementPage: React.FC = () => {
       name: link.name,
       allowed_categories: link.allowed_categories,
       expires_at: link.expires_at ? new Date(link.expires_at).toISOString().slice(0, 16) : '',
-      usage_limit: link.usage_limit ? link.usage_limit.toString() : ''
+      usage_limit: link.usage_limit ? link.usage_limit.toString() : '',
+      form_description: link.form_description || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -359,6 +419,26 @@ export const RegistrationLinksManagementPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                {/* Form Description (Rich Text) */}
+                <div>
+                  <Label>Form Description (Rich Text)</Label>
+                  <div className="min-h-[120px]">
+                    <div
+                      ref={createQuillRef}
+                      style={{
+                        minHeight: 100,
+                        background: "#fff",
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                        fontSize: 16,
+                      }}
+                      className="quill-editor"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    This description will be shown on the public registration form if provided.
+                  </div>
+                </div>
                 <DialogFooter>
                   <Button 
                     variant="outline" 
@@ -451,7 +531,6 @@ export const RegistrationLinksManagementPage: React.FC = () => {
                   {links.map((link) => {
                     const status = getLinkStatus(link);
                     const url = getRegistrationUrl(link.link_token);
-                    
                     return (
                       <div
                         key={link.id}
@@ -594,6 +673,26 @@ export const RegistrationLinksManagementPage: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Form Description (Rich Text) */}
+              <div>
+                <Label>Form Description (Rich Text)</Label>
+                <div className="min-h-[120px]">
+                  <div
+                    ref={editQuillRef}
+                    style={{
+                      minHeight: 100,
+                      background: "#fff",
+                      borderRadius: 6,
+                      border: "1px solid #d1d5db",
+                      fontSize: 16,
+                    }}
+                    className="quill-editor"
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  This description will be shown on the public registration form if provided.
+                </div>
+              </div>
               <div>
                 <Label htmlFor="edit-link-name">Link Name</Label>
                 <Input
