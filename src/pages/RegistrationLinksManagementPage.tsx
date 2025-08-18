@@ -85,6 +85,21 @@ export const RegistrationLinksManagementPage: React.FC = () => {
   const createQuillRef = useRef<HTMLDivElement>(null);
   const editQuillRef = useRef<HTMLDivElement>(null);
 
+  // State for dialogs
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<RegistrationLink | null>(null);
+
+  // Form states
+  const [formData, setFormData] = useState<LinkFormData>({
+    name: '',
+    allowed_categories: [],
+    expires_at: '',
+    usage_limit: '',
+    form_description: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Quill setup for Create Dialog
   useEffect(() => {
     if (!isCreateDialogOpen || !createQuillRef.current) return;
@@ -135,21 +150,6 @@ export const RegistrationLinksManagementPage: React.FC = () => {
   const { campId } = useParams<{ campId: string }>();
   const navigate = useNavigate();
   
-  // State for dialogs
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedLink, setSelectedLink] = useState<RegistrationLink | null>(null);
-  
-  // Form states
-  const [formData, setFormData] = useState<LinkFormData>({
-    name: '',
-    allowed_categories: [],
-    expires_at: '',
-    usage_limit: '',
-    form_description: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Data fetching
   const { data: camp, isLoading: campLoading } = useCamp(campId!);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories(campId!);
