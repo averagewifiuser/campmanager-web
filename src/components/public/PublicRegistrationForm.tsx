@@ -841,7 +841,7 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                     Additional Information
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                  New branded T-shirts will be available on sale
+                  New branded T-shirts will be available on sale
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {custom_fields
