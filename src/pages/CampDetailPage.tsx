@@ -40,12 +40,16 @@ import type { Registration } from '@/lib/types';
 export const CampDetailPage: React.FC = () => {
   const { campId } = useParams<{ campId: string }>();
   const navigate = useNavigate();
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [checkinFilter, setCheckinFilter] = useState<string>('all');
-  
+
+  // Pagination state (must be before any conditional returns!)
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // Data fetching
   const { data: camp, isLoading: campLoading, error: campError } = useCamp(campId!);
   const { data: registrations = [], isLoading: registrationsLoading } = useCampRegistrations(campId!);
@@ -134,6 +138,22 @@ export const CampDetailPage: React.FC = () => {
     
     return matchesSearch && matchesPayment && matchesCheckin;
   });
+
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredRegistrations.length / rowsPerPage));
+  const paginatedRegistrations = filteredRegistrations.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRowsPerPage(Number(e.target.value));
+    setPage(1);
+  };
 
   const status = getCampStatus();
   const capacityUsed = Math.round((registrations.length / camp.capacity) * 100);
@@ -411,13 +431,49 @@ export const CampDetailPage: React.FC = () => {
               <Card>
                 <CardContent className="p-0">
                   <RegistrationsTable 
-                    registrations={filteredRegistrations}
+                    registrations={paginatedRegistrations}
                     isLoading={registrationsLoading}
                     onEditRegistration={(registration) => {
                       console.log('Edit registration:', registration);
                       // TODO: Open edit dialog
                     }}
                   />
+                  {/* Pagination Controls */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t bg-muted">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">Rows per page:</span>
+                      <select
+                        className="border rounded px-2 py-1 text-sm"
+                        value={rowsPerPage}
+                        onChange={handleRowsPerPageChange}
+                      >
+                        {[5, 10, 20, 50, 100].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page === 1}
+                      >
+                        Prev
+                      </Button>
+                      <span className="text-sm">
+                        Page {page} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
