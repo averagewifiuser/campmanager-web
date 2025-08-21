@@ -35,6 +35,10 @@ import { useCamp } from '@/hooks/useCamps';
 import { useCampRegistrations, useCampStats } from '@/hooks/useRegistrations';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
+import { registrationsApi } from '@/lib/api';
+import { RegistrationEditForm } from '@/components/forms/RegistrationEditForm';
 import type { Registration } from '@/lib/types';
 
 export const CampDetailPage: React.FC = () => {
@@ -52,8 +56,39 @@ export const CampDetailPage: React.FC = () => {
 
   // Data fetching
   const { data: camp, isLoading: campLoading, error: campError } = useCamp(campId!);
-  const { data: registrations = [], isLoading: registrationsLoading } = useCampRegistrations(campId!);
+  const { data: registrations = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useCampRegistrations(campId!);
   const { data: stats, isLoading: statsLoading } = useCampStats(campId!);
+
+  // Edit registration dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleEditRegistration = (registration: Registration) => {
+    setEditingRegistration(registration);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditCancel = () => {
+    setEditDialogOpen(false);
+    setEditingRegistration(null);
+  };
+
+  const handleEditSubmit = async (data: any) => {
+    if (!editingRegistration) return;
+    setIsSubmitting(true);
+    try {
+      await registrationsApi.updateRegistration(editingRegistration.id, data);
+      toast({ title: 'Registration updated', description: 'The registration was updated successfully.' });
+      setEditDialogOpen(false);
+      setEditingRegistration(null);
+      await refetchRegistrations();
+    } catch (error: any) {
+      toast({ title: 'Update failed', description: error?.message || 'Failed to update registration', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Early returns for loading and error states
   if (!campId) {
@@ -433,11 +468,24 @@ export const CampDetailPage: React.FC = () => {
                   <RegistrationsTable 
                     registrations={paginatedRegistrations}
                     isLoading={registrationsLoading}
-                    onEditRegistration={(registration) => {
-                      console.log('Edit registration:', registration);
-                      // TODO: Open edit dialog
-                    }}
+                    onEditRegistration={handleEditRegistration}
                   />
+                  {/* Edit Registration Dialog */}
+                  <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                    <DialogContent className="max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Edit Registration</DialogTitle>
+                      </DialogHeader>
+                      {editingRegistration && (
+                        <RegistrationEditForm
+                          registration={editingRegistration}
+                          onSubmit={handleEditSubmit}
+                          onCancel={handleEditCancel}
+                          isSubmitting={isSubmitting}
+                        />
+                      )}
+                    </DialogContent>
+                  </Dialog>
                   {/* Pagination Controls */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t bg-muted">
                     <div className="flex items-center gap-2">
