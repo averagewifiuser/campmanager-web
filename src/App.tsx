@@ -1,3 +1,4 @@
+import React from "react";
 // src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,6 +17,9 @@ import { CustomFieldsManagementPage } from './pages/CustomFieldsManagementPage';
 import { ChurchesManagementPage } from './pages/ChurchesManagementPage';
 import { CategoriesManagementPage } from './pages/CategoriesManagementPage';
 import { LoadingSpinner } from './components/ui/loading-spinner';
+import SideNav from './components/layout/SideNav';
+import { useLocation, matchPath } from 'react-router-dom';
+import PaymentsPage from './pages/PaymentsPage';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -51,7 +55,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/camps" replace />;
   }
 
   return <>{children}</>;
@@ -60,6 +64,15 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Payments page (protected) */}
+      <Route
+        path="/camps/:campId/payments"
+        element={
+          <ProtectedRoute>
+            <PaymentsPage />
+          </ProtectedRoute>
+        }
+      />
       {/* Public routes */}
       <Route
         path="/login"
@@ -169,10 +182,10 @@ function AppRoutes() {
       />
 
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/camps" replace />} />
       
       {/* Catch all - redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/camps" replace />} />
     </Routes>
   );
 }
@@ -182,13 +195,36 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <div className="min-h-screen bg-background">
+          <MainLayout>
             <AppRoutes />
-          </div>
+          </MainLayout>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
 }
+
+const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  // Try to extract campId from the current URL
+  // Matches /camps/:campId, /camps/:campId/edit, /camps/:campId/manage, /payments/:campId, etc.
+  const campMatch =
+    matchPath("/camps/:campId/*", location.pathname) ||
+    matchPath("/camps/:campId", location.pathname);
+
+  const campId = campMatch?.params?.campId;
+
+  // Do not show SideNav on payments pag
+
+  if (isLoading) return <LoadingSpinner />;
+  return (
+    <div className="flex min-h-screen bg-background">
+      {isAuthenticated && campId && <SideNav campId={campId} />}
+      <main className="flex-1">{children}</main>
+    </div>
+  );
+};
 
 export default App;

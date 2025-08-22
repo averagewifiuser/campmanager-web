@@ -292,6 +292,29 @@ export const customFieldsApi = {
   },
 };
 
+/**
+ * Payments API
+ */
+export const paymentsApi = {
+  getCampPayments: async (campId: string) => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/payments`);
+    return response.data.data;
+  },
+  createPayment: async (
+    campId: string,
+    data: {
+      amount: number;
+      payment_channel: string;
+      payment_metadata: Record<string, any>;
+      payment_reference: string;
+      registration_ids: string[];
+    }
+  ) => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/payments`, { data });
+    return response.data.data;
+  },
+};
+
 // Churches API
 export const churchesApi = {
   getChurches: async (campId: string): Promise<Church[]> => {

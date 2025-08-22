@@ -7,7 +7,6 @@ import {
   Trash2, 
   CheckCircle, 
   XCircle,
-  DollarSign,
   UserCheck,
   Phone,
   Mail,
@@ -82,17 +81,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
       setSelectedRegistrations(prev => [...prev, registrationId]);
     } else {
       setSelectedRegistrations(prev => prev.filter(id => id !== registrationId));
-    }
-  };
-
-  const handlePaymentToggle = async (registration: Registration) => {
-    try {
-      await updatePaymentMutation.mutateAsync({
-        registrationId: registration.id,
-        hasPaid: !registration.has_paid
-      });
-    } catch (error) {
-      console.error('Failed to update payment status:', error);
     }
   };
 
@@ -293,7 +281,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handlePaymentToggle(registration)}
                     disabled={updatePaymentMutation.isPending}
                   >
                     {registration.has_paid ? (
@@ -352,12 +339,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handlePaymentToggle(registration)}
-                      >
-                        <DollarSign className="mr-2 h-4 w-4" />
-                        Toggle Payment
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleCheckinToggle(registration)}
