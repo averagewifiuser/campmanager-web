@@ -13,11 +13,23 @@ export const registrationKeys = {
   stats: (campId: string) => ['camps', campId, 'stats'] as const,
 };
 
-// Get all registrations for a camp
-export const useCampRegistrations = (campId: string) => {
+/**
+ * Get all registrations for a camp, with optional filters.
+ * @param campId - The camp ID
+ * @param filters - Optional filters: { church_id?: string, category_id?: string }
+ */
+export const useCampRegistrations = (
+  campId: string,
+  filters?: { church_id?: string; category_id?: string }
+) => {
   return useQuery({
-    queryKey: registrationKeys.list(campId),
-    queryFn: () => registrationsApi.getCampRegistrations(campId),
+    queryKey: [
+      ...registrationKeys.list(campId),
+      'filters',
+      filters?.church_id || 'all',
+      filters?.category_id || 'all'
+    ],
+    queryFn: () => registrationsApi.getCampRegistrations(campId, filters),
     enabled: !!campId,
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -56,16 +68,10 @@ export const useUpdateRegistration = () => {
         updatedRegistration
       );
       
-      // Update registrations list cache
-      queryClient.setQueryData<Registration[]>(
-        registrationKeys.list(updatedRegistration.camp_id),
-        (oldRegistrations) => {
-          if (!oldRegistrations) return [updatedRegistration];
-          return oldRegistrations.map(reg => 
-            reg.id === updatedRegistration.id ? updatedRegistration : reg
-          );
-        }
-      );
+      // Invalidate all registration list queries for this camp (including filtered ones)
+      queryClient.invalidateQueries({ 
+        queryKey: registrationKeys.list(updatedRegistration.camp_id)
+      });
       
       // Invalidate stats
       queryClient.invalidateQueries({ 
@@ -92,16 +98,10 @@ export const useUpdatePaymentStatus = () => {
         updatedRegistration
       );
       
-      // Update registrations list cache
-      queryClient.setQueryData<Registration[]>(
-        registrationKeys.list(updatedRegistration.camp_id),
-        (oldRegistrations) => {
-          if (!oldRegistrations) return [updatedRegistration];
-          return oldRegistrations.map(reg => 
-            reg.id === updatedRegistration.id ? updatedRegistration : reg
-          );
-        }
-      );
+      // Invalidate all registration list queries for this camp (including filtered ones)
+      queryClient.invalidateQueries({ 
+        queryKey: registrationKeys.list(updatedRegistration.camp_id)
+      });
       
       // Invalidate stats
       queryClient.invalidateQueries({ 
@@ -128,16 +128,10 @@ export const useUpdateCheckinStatus = () => {
         updatedRegistration
       );
       
-      // Update registrations list cache
-      queryClient.setQueryData<Registration[]>(
-        registrationKeys.list(updatedRegistration.camp_id),
-        (oldRegistrations) => {
-          if (!oldRegistrations) return [updatedRegistration];
-          return oldRegistrations.map(reg => 
-            reg.id === updatedRegistration.id ? updatedRegistration : reg
-          );
-        }
-      );
+      // Invalidate all registration list queries for this camp (including filtered ones)
+      queryClient.invalidateQueries({ 
+        queryKey: registrationKeys.list(updatedRegistration.camp_id)
+      });
       
       // Invalidate stats
       queryClient.invalidateQueries({ 

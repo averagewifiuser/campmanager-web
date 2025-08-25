@@ -9,12 +9,10 @@ import {
   MapPin,
   UserCheck,
   Settings,
-  Search,
-  Download,
+
   TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -23,13 +21,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from '@/components/ui/select';
 import { RegistrationsTable } from '@/components/registrations/RegistrationsTable';
 import { useCamp } from '@/hooks/useCamps';
 import { useCampRegistrations, useCampStats } from '@/hooks/useRegistrations';
@@ -46,8 +44,11 @@ export const CampDetailPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Filter states
+  // @ts-ignore
   const [searchTerm, setSearchTerm] = useState('');
+  // @ts-ignore
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  // @ts-ignore
   const [checkinFilter, setCheckinFilter] = useState<string>('all');
 
   // Pagination state (must be before any conditional returns!)
@@ -56,6 +57,7 @@ export const CampDetailPage: React.FC = () => {
 
   // Data fetching
   const { data: camp, isLoading: campLoading, error: campError } = useCamp(campId!);
+  // @ts-ignore
   const { data: registrations = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useCampRegistrations(campId!);
   const { data: stats, isLoading: statsLoading } = useCampStats(campId!);
 
@@ -176,6 +178,7 @@ export const CampDetailPage: React.FC = () => {
 
   // Pagination logic
   const totalPages = Math.max(1, Math.ceil(filteredRegistrations.length / rowsPerPage));
+  // @ts-ignore
   const paginatedRegistrations = filteredRegistrations.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
@@ -384,7 +387,7 @@ export const CampDetailPage: React.FC = () => {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Manage Registrations</CardTitle>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
@@ -417,57 +420,16 @@ export const CampDetailPage: React.FC = () => {
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Export
-                    </Button>
+                    </Button> */}
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col gap-4 sm:flex-row">
-                    {/* Search */}
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search participants..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Payment Filter */}
-                    <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Payment status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Payments</SelectItem>
-                        <SelectItem value="paid">Paid Only</SelectItem>
-                        <SelectItem value="unpaid">Unpaid Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {/* Check-in Filter */}
-                    <Select value={checkinFilter} onValueChange={setCheckinFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Check-in status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Participants</SelectItem>
-                        <SelectItem value="checked-in">Checked In</SelectItem>
-                        <SelectItem value="not-checked-in">Not Checked In</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
               </Card>
 
               {/* Registrations Table */}
               <Card>
                 <CardContent className="p-0">
                   <RegistrationsTable 
-                    registrations={paginatedRegistrations}
-                    isLoading={registrationsLoading}
+                    campId={campId}
                     onEditRegistration={handleEditRegistration}
                   />
                   {/* Edit Registration Dialog */}

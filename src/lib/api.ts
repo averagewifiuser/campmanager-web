@@ -182,8 +182,25 @@ export const campsApi = {
 
 // Registrations API
 export const registrationsApi = {
-  getCampRegistrations: async (campId: string): Promise<Registration[]> => {
-    const response = await api.get<ApiResponse<Registration[]>>(`/camps/${campId}/registrations`);
+  /**
+   * Get all registrations for a camp, with optional filters.
+   * @param campId - The camp ID
+   * @param filters - Optional filters: { church_id?: string, category_id?: string }
+   */
+  getCampRegistrations: async (
+    campId: string,
+    filters?: { church_id?: string; category_id?: string }
+  ): Promise<Registration[]> => {
+    let query = '';
+    if (filters) {
+      const params = new URLSearchParams();
+      if (filters.church_id) params.append('church_id', filters.church_id);
+      if (filters.category_id) params.append('category_id', filters.category_id);
+      query = `?${params.toString()}`;
+    }
+    const response = await api.get<ApiResponse<Registration[]>>(
+      `/camps/${campId}/registrations${query}`
+    );
     return response.data.data;
   },
   
