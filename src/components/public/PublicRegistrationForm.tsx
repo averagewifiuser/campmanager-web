@@ -128,33 +128,14 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
   submitError,
 }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
-  const [selectedArea, setSelectedArea] = useState<string>("");
-  const [districtSearch, setDistrictSearch] = useState("");
-  const [areaSearch, setAreaSearch] = useState("");
   const [churchSearch, setChurchSearch] = useState("");
 
   const { camp, churches, categories, custom_fields } = registrationData;
 
-  // Get unique districts
-  const districts = Array.from(
-    new Set(churches.map((c) => c.district).filter(Boolean))
-  );
-
-  // Get unique areas for selected district
-  const areas = Array.from(
-    new Set(
-      churches
-        .filter((c) => c.district === selectedDistrict)
-        .map((c) => c.area)
-        .filter(Boolean)
-    )
-  );
-
-  // Get churches for selected area
-  const filteredChurches = churches.filter(
-    (c) => c.district === selectedDistrict && c.area === selectedArea
-  );
+  // Get unique churches sorted by name
+  const uniqueChurches = Array.from(
+    new Map(churches.map(church => [church.name, church])).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
 
   const registrationSchema = createRegistrationSchema(custom_fields);
   type RegistrationFormValues = z.infer<typeof registrationSchema>;
@@ -616,138 +597,54 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* District Dropdown */}
-                  <div>
-                    <Label>District *</Label>
-                    <Select
-                      onValueChange={(value) => {
-                        setSelectedDistrict(value);
-                        setSelectedArea("");
-                        form.setValue("church_id", "");
-                      }}
-                      value={selectedDistrict}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select district" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <div className="px-2 py-1">
-                          <input
-                            type="text"
-                            placeholder="Search district..."
-                            className="w-full border rounded px-2 py-1 text-sm"
-                            value={districtSearch}
-                            onChange={(e) => setDistrictSearch(e.target.value)}
-                          />
-                        </div>
-                        {districts
-                          .filter(
-                            (d) =>
-                              !districtSearch ||
-                              d
-                                .toLowerCase()
-                                .includes(districtSearch.toLowerCase())
-                          )
-                          .map((district) => (
-                            <SelectItem key={district} value={district}>
-                              {district}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Area Dropdown */}
-                  {selectedDistrict && (
-                    <div>
-                      <Label>Area *</Label>
-                      <Select
-                        onValueChange={(value) => {
-                          setSelectedArea(value);
-                          form.setValue("church_id", "");
-                        }}
-                        value={selectedArea}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select area" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <div className="px-2 py-1">
-                            <input
-                              type="text"
-                              placeholder="Search area..."
-                              className="w-full border rounded px-2 py-1 text-sm"
-                              value={areaSearch}
-                              onChange={(e) => setAreaSearch(e.target.value)}
-                            />
-                          </div>
-                          {areas
-                            .filter(
-                              (a) =>
-                                !areaSearch ||
-                                a
-                                  .toLowerCase()
-                                  .includes(areaSearch.toLowerCase())
-                            )
-                            .map((area) => (
-                              <SelectItem key={area} value={area}>
-                                {area}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
                   {/* Church Dropdown */}
-                  {selectedDistrict && selectedArea && (
-                    <FormField
-                      control={form.control}
-                      name="church_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Church *</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select your church" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <div className="px-2 py-1">
-                                <input
-                                  type="text"
-                                  placeholder="Search church..."
-                                  className="w-full border rounded px-2 py-1 text-sm"
-                                  value={churchSearch}
-                                  onChange={(e) =>
-                                    setChurchSearch(e.target.value)
-                                  }
-                                />
-                              </div>
-                              {filteredChurches
-                                .filter(
-                                  (church) =>
-                                    !churchSearch ||
-                                    church.name
-                                      .toLowerCase()
-                                      .includes(churchSearch.toLowerCase())
-                                )
-                                .map((church) => (
-                                  <SelectItem key={church.id} value={church.id}>
-                                    {church.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="church_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Church *</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select your church" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <div className="px-2 py-1">
+                              <input
+                                type="text"
+                                placeholder="Search church..."
+                                className="w-full border rounded px-2 py-1 text-sm"
+                                value={churchSearch}
+                                onChange={(e) =>
+                                  setChurchSearch(e.target.value)
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            {uniqueChurches
+                              .filter(
+                                (church) =>
+                                  !churchSearch ||
+                                  church.name
+                                    .toLowerCase()
+                                    .includes(churchSearch.toLowerCase())
+                              )
+                              .map((church) => (
+                                <SelectItem key={church.id} value={church.id}>
+                                  {church.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
