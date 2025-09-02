@@ -195,10 +195,10 @@ function AppRoutes() {
       />
 
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/camps" replace />} />
+      <Route path="/" element={<Navigate to="/camper-verification" replace />} />
       
       {/* Catch all - redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/camps" replace />} />
+      <Route path="*" element={<Navigate to="/camper-verification" replace />} />
     </Routes>
   );
 }
