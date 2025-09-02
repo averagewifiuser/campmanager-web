@@ -12,6 +12,8 @@ import { CampDetailPage } from './pages/CampDetailPage';
 import { CampManagementPage } from './pages/CampManagementPage';
 import { PublicRegistrationPage } from './pages/PublicRegistrationPage';
 import { LinkRegistrationPage } from './pages/LinkRegistrationPage';
+import { CamperVerificationPage } from './pages/CamperVerificationPage';
+import { CamperDataPage } from './pages/CamperDataPage';
 import { RegistrationLinksManagementPage } from './pages/RegistrationLinksManagementPage';
 import { CustomFieldsManagementPage } from './pages/CustomFieldsManagementPage';
 import { ChurchesManagementPage } from './pages/ChurchesManagementPage';
@@ -92,6 +94,17 @@ function AppRoutes() {
       <Route
         path="/register/:linkToken"
         element={<LinkRegistrationPage />}
+      />
+
+      {/* Camper verification routes - no auth required */}
+      <Route
+        path="/camper-verification"
+        element={<CamperVerificationPage />}
+      />
+      
+      <Route
+        path="/camper-data"
+        element={<CamperDataPage />}
       />
 
       {/* Protected routes */}
