@@ -22,6 +22,7 @@ import { LoadingSpinner } from './components/ui/loading-spinner';
 import SideNav from './components/layout/SideNav';
 import { useLocation, matchPath } from 'react-router-dom';
 import PaymentsPage from './pages/PaymentsPage';
+import FinancialsPage from './pages/FinancialsPage';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -72,6 +73,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PaymentsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Financials page (protected) */}
+      <Route
+        path="/camps/:campId/financials"
+        element={
+          <ProtectedRoute>
+            <FinancialsPage />
           </ProtectedRoute>
         }
       />

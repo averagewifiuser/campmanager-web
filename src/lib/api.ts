@@ -332,6 +332,33 @@ export const paymentsApi = {
   },
 };
 
+/**
+ * Financials API
+ */
+export const financialsApi = {
+  getCampFinancials: async (campId: string) => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/financials`);
+    return response.data.data;
+  },
+  createFinancial: async (
+    campId: string,
+    data: {
+      amount: number;
+      approved_by: string;
+      date: string;
+      description: string;
+      payment_method: 'cash' | 'check' | 'momo' | 'bank_transfer' | 'card';
+      received_by: string;
+      reference_number: string;
+      transaction_category: 'offering' | 'sales' | 'donation' | 'camp_payment' | 'camp_expense' | 'other';
+      transaction_type: 'income' | 'expense';
+    }
+  ) => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/financials`, { data });
+    return response.data.data;
+  },
+};
+
 // Churches API
 export const churchesApi = {
   getChurches: async (campId: string): Promise<Church[]> => {
