@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Plus, ShoppingCart, TrendingUp, Hash, DollarSign } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { purchasesApi } from "@/lib/api";
 import { Purchase, CreatePurchaseRequest } from "@/lib/types";
 import PurchasesTable from "@/components/purchases/PurchasesTable";
@@ -14,15 +15,24 @@ const PurchasesPage = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [soldByFilter, setSoldByFilter] = useState<string>('all');
 
-  // Calculate purchase statistics
+  // Filter purchases based on "Sold By" filter
+  const filteredPurchases = purchases.filter(purchase => {
+    return soldByFilter === 'all' || purchase.sold_by === soldByFilter;
+  });
+
+  // Get unique "Sold By" values for filter dropdown
+  const uniqueSoldBy = [...new Set(purchases.map(p => p.sold_by).filter(Boolean))];
+
+  // Calculate purchase statistics based on filtered data
   const purchaseStats = {
-    totalPurchases: purchases.length,
-    totalAmount: purchases.reduce((sum, purchase) => sum + purchase.amount, 0),
-    averageAmount: purchases.length > 0 
-      ? purchases.reduce((sum, purchase) => sum + purchase.amount, 0) / purchases.length 
+    totalPurchases: filteredPurchases.length,
+    totalAmount: filteredPurchases.reduce((sum, purchase) => sum + purchase.amount, 0),
+    averageAmount: filteredPurchases.length > 0 
+      ? filteredPurchases.reduce((sum, purchase) => sum + purchase.amount, 0) / filteredPurchases.length 
       : 0,
-    recentPurchases: purchases.filter(purchase => {
+    recentPurchases: filteredPurchases.filter(purchase => {
       const purchaseDate = new Date(purchase.purchase_date);
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -99,10 +109,28 @@ const PurchasesPage = () => {
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Purchases Management</h1>
             </div>
-            <Button onClick={() => setSideNavOpen(true)} variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              New Purchase
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Sold By:</span>
+                <Select value={soldByFilter} onValueChange={setSoldByFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {uniqueSoldBy.map((person) => (
+                      <SelectItem key={person} value={person}>
+                        {person}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => setSideNavOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                New Purchase
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -181,8 +209,10 @@ const PurchasesPage = () => {
 
               {/* Purchases Table */}
               <PurchasesTable 
-                purchases={purchases} 
+                purchases={filteredPurchases} 
                 isLoading={loading}
+                soldByFilter={soldByFilter}
+                onSoldByFilterChange={setSoldByFilter}
               />
             </>
           )}

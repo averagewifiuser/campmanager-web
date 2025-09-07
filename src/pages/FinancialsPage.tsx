@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Plus, DollarSign, TrendingUp, TrendingDown, Calculator } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { financialsApi } from "@/lib/api";
 import FinancialsTable from "@/components/financials/FinancialsTable";
 import FinancialForm from "@/components/financials/FinancialForm";
@@ -14,24 +15,33 @@ const FinancialsPage = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [receivedByFilter, setReceivedByFilter] = useState<string>('all');
 
-  // Calculate financial statistics
+  // Filter financials based on "Received By" filter
+  const filteredFinancials = financials.filter(financial => {
+    return receivedByFilter === 'all' || financial.received_by === receivedByFilter;
+  });
+
+  // Get unique "Received By" values for filter dropdown
+  const uniqueReceivedBy = [...new Set(financials.map(f => f.received_by).filter(Boolean))];
+
+  // Calculate financial statistics based on filtered data
   const financialStats = {
-    totalIncome: financials
+    totalIncome: filteredFinancials
       .filter(f => f.transaction_type === 'income')
       .reduce((sum, financial) => sum + parseFloat(financial.amount), 0),
-    totalExpenses: financials
+    totalExpenses: filteredFinancials
       .filter(f => f.transaction_type === 'expense')
       .reduce((sum, financial) => sum + parseFloat(financial.amount), 0),
-    totalTransactions: financials.length,
-    netBalance: financials.reduce((sum, financial) => {
+    totalTransactions: filteredFinancials.length,
+    netBalance: filteredFinancials.reduce((sum, financial) => {
       return financial.transaction_type === 'income' 
         ? sum + parseFloat(financial.amount)
         : sum - parseFloat(financial.amount);
     }, 0),
-    incomeTransactions: financials.filter(f => f.transaction_type === 'income').length,
-    expenseTransactions: financials.filter(f => f.transaction_type === 'expense').length,
-    recentTransactions: financials.filter(financial => {
+    incomeTransactions: filteredFinancials.filter(f => f.transaction_type === 'income').length,
+    expenseTransactions: filteredFinancials.filter(f => f.transaction_type === 'expense').length,
+    recentTransactions: filteredFinancials.filter(financial => {
       const transactionDate = new Date(financial.date);
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -102,10 +112,28 @@ const FinancialsPage = () => {
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Financials Management</h1>
             </div>
-            <Button onClick={() => setSideNavOpen(true)} variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              New Financial Record
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Received By:</span>
+                <Select value={receivedByFilter} onValueChange={setReceivedByFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {uniqueReceivedBy.map((person) => (
+                      <SelectItem key={person} value={person}>
+                        {person}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => setSideNavOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                New Financial Record
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -183,7 +211,7 @@ const FinancialsPage = () => {
               </div>
 
               {/* Financials Table */}
-              <FinancialsTable financials={financials} isLoading={loading} />
+              <FinancialsTable financials={filteredFinancials} isLoading={loading} />
             </>
           )}
         </div>

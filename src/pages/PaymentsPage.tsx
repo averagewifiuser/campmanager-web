@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Search, Plus, DollarSign, Users, TrendingUp, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { paymentsApi, registrationsApi } from "@/lib/api";
 import PaymentsTable from "@/components/payments/PaymentsTable"; // Updated import
 
@@ -22,13 +23,13 @@ const Label = ({ children, className = "" }: LabelProps) => (
   </label>
 );
 
-type SelectProps = {
+type MockSelectProps = {
   children: React.ReactNode;
   value: string;
   onValueChange: (value: string) => void;
   className?: string;
 };
-const Select = ({ children, value, onValueChange, className = "" }: SelectProps) => (
+const MockSelect = ({ children, value, onValueChange, className = "" }: MockSelectProps) => (
   <select
     className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${className}`}
     value={value}
@@ -38,8 +39,8 @@ const Select = ({ children, value, onValueChange, className = "" }: SelectProps)
   </select>
 );
 
-type SelectItemProps = { value: string; children: React.ReactNode };
-const SelectItem = ({ value, children }: SelectItemProps) => (
+type MockSelectItemProps = { value: string; children: React.ReactNode };
+const MockSelectItem = ({ value, children }: MockSelectItemProps) => (
   <option value={value}>{children}</option>
 );
 
@@ -156,12 +157,12 @@ const PaymentForm = ({ registrations, onSubmit, onCancel, loading }: PaymentForm
 
       <div>
         <Label>Payment Channel</Label>
-        <Select value={paymentChannel} onValueChange={setPaymentChannel}>
-          <SelectItem value="momo">Mobile Money</SelectItem>
-          <SelectItem value="cheque">Cheque</SelectItem>
-          <SelectItem value="cash">Cash</SelectItem>
-          <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-        </Select>
+        <MockSelect value={paymentChannel} onValueChange={setPaymentChannel}>
+          <MockSelectItem value="momo">Mobile Money</MockSelectItem>
+          <MockSelectItem value="cheque">Cheque</MockSelectItem>
+          <MockSelectItem value="cash">Cash</MockSelectItem>
+          <MockSelectItem value="bank_transfer">Bank Transfer</MockSelectItem>
+        </MockSelect>
       </div>
 
       {/* <div>
@@ -290,18 +291,27 @@ const PaymentsPage = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [recordedByFilter, setRecordedByFilter] = useState<string>('all');
 
-  // Calculate payment statistics
+  // Filter payments based on "Recorded By" filter
+  const filteredPayments = payments.filter(payment => {
+    return recordedByFilter === 'all' || payment.recorded_by === recordedByFilter;
+  });
+
+  // Get unique "Recorded By" values for filter dropdown
+  const uniqueRecordedBy = [...new Set(payments.map(p => p.recorded_by).filter(Boolean))];
+
+  // Calculate payment statistics based on filtered data
   const paymentStats = {
-    totalAmount: payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
-    totalPayments: payments.length,
-    averagePayment: payments.length > 0 ? payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0) / payments.length : 0,
-    paymentsByChannel: payments.reduce((acc, payment) => {
+    totalAmount: filteredPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
+    totalPayments: filteredPayments.length,
+    averagePayment: filteredPayments.length > 0 ? filteredPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0) / filteredPayments.length : 0,
+    paymentsByChannel: filteredPayments.reduce((acc, payment) => {
       const channel = payment.payment_channel;
       acc[channel] = (acc[channel] || 0) + 1;
       return acc;
     }, {} as Record<string, number>),
-    recentPayments: payments.filter(payment => {
+    recentPayments: filteredPayments.filter(payment => {
       const paymentDate = new Date(payment.payment_date);
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -371,10 +381,28 @@ const PaymentsPage = () => {
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Payments Management</h1>
             </div>
-            <Button onClick={() => setSideNavOpen(true)} variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              New Payment
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Recorded By:</span>
+                <Select value={recordedByFilter} onValueChange={setRecordedByFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {uniqueRecordedBy.map((person) => (
+                      <SelectItem key={person} value={person}>
+                        {person}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => setSideNavOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                New Payment
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -462,7 +490,7 @@ const PaymentsPage = () => {
               </div>
 
               {/* Payments Table */}
-              <PaymentsTable payments={payments} isLoading={loading} />
+              <PaymentsTable payments={filteredPayments} isLoading={loading} />
             </>
           )}
         </div>

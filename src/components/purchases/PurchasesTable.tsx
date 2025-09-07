@@ -2,21 +2,31 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ShoppingCart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, Search, Download } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Purchase, InventoryItem } from "@/lib/types";
 import { inventoryApi } from "@/lib/api";
 
 interface PurchasesTableProps {
   purchases: Purchase[];
   isLoading: boolean;
+  soldByFilter?: string;
+  onSoldByFilterChange?: (value: string) => void;
 }
 
 const PurchasesTable: React.FC<PurchasesTableProps> = ({
   purchases,
   isLoading,
+  soldByFilter = 'all',
+  onSoldByFilterChange,
 }) => {
   const { campId } = useParams();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Fetch inventory to resolve item names
   useEffect(() => {
@@ -35,6 +45,37 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
     fetchInventory();
   }, [campId]);
 
+  // Get unique "Sold By" values for filter dropdown
+  const uniqueSoldBy = [...new Set(purchases.map(p => p.sold_by).filter(Boolean))];
+
+  // Filter purchases
+  const filteredPurchases = purchases.filter((purchase) => {
+    const matchesSearch = searchTerm === '' || 
+      purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (purchase.sold_by || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getItemNames(purchase).toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSoldBy = soldByFilter === 'all' || purchase.sold_by === soldByFilter;
+    
+    return matchesSearch && matchesSoldBy;
+  });
+
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredPurchases.length / rowsPerPage));
+  const paginatedPurchases = filteredPurchases.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRowsPerPage(Number(e.target.value));
+    setPage(1);
+  };
+
   const getItemNames = (purchase: Purchase): string => {
     if (!purchase.items || purchase.items.length === 0) {
       return purchase.inventory_ids || 'No items';
@@ -47,6 +88,40 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
         return `${name} (${item.quantity})`;
       })
       .join(', ');
+  };
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    const formatDateForFilename = () => {
+      return new Date().toISOString().slice(0, 10);
+    };
+
+    const headers = [
+      "Purchase ID",
+      "Amount",
+      "Items Count",
+      "Item Names",
+      "Purchase Date",
+      "Sold By"
+    ];
+    const csvData = filteredPurchases.map((purchase) => [
+      purchase.id,
+      purchase.amount,
+      purchase.items?.length || 0,
+      getItemNames(purchase),
+      formatDate(purchase.purchase_date),
+      purchase.sold_by || 'N/A'
+    ]);
+    const csvContent = [headers, ...csvData]
+      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `purchases-${formatDateForFilename()}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   };
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GH', {
@@ -84,38 +159,62 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
     );
   }
 
-  if (purchases.length === 0) {
-    return (
+  return (
+    <div className="space-y-4">
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Purchases
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Manage Purchases</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              disabled={filteredPurchases.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">No purchases found</h3>
-            <p className="text-sm text-muted-foreground">
-              Start by recording your first purchase to track camp sales and inventory movement.
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by ID, sold by, or items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            
+            {/* Sold By Filter */}
+            {onSoldByFilterChange && (
+              <Select value={soldByFilter} onValueChange={onSoldByFilterChange}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Sold By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sellers</SelectItem>
+                  {uniqueSoldBy.map((person) => (
+                    <SelectItem key={person} value={person}>
+                      {person}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
-    );
-  }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5" />
-          Purchases ({purchases.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
+      {/* Purchases Table */}
+      <Card>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -128,33 +227,80 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {purchases.map((purchase) => (
-                <TableRow key={purchase.id}>
-                  <TableCell className="font-mono text-sm">
-                    {purchase.id.slice(0, 8)}...
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
-                    {formatCurrency(purchase.amount)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {purchase.items?.length || 0} item(s)
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate" title={getItemNames(purchase)}>
-                    {getItemNames(purchase)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatDate(purchase.purchase_date)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {purchase.sold_by || 'N/A'}
+              {paginatedPurchases.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {searchTerm || soldByFilter !== 'all' ? 'No purchases match your filters' : 'No purchases found'}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginatedPurchases.map((purchase) => (
+                  <TableRow key={purchase.id}>
+                    <TableCell className="font-mono text-sm">
+                      {purchase.id.slice(0, 8)}...
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      {formatCurrency(purchase.amount)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {purchase.items?.length || 0} item(s)
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate" title={getItemNames(purchase)}>
+                      {getItemNames(purchase)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(purchase.purchase_date)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {purchase.sold_by || 'N/A'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t bg-muted">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Rows per page:</span>
+                <select
+                  className="border rounded px-2 py-1 text-sm"
+                  value={rowsPerPage}
+                  onChange={handleRowsPerPageChange}
+                >
+                  {[5, 10, 20, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                >
+                  Prev
+                </Button>
+                <span className="text-sm">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
