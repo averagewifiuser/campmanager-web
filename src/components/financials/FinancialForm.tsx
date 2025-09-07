@@ -85,6 +85,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ onSubmit, onCancel, loadi
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="offering">Offering</SelectItem>
+            <SelectItem value="pledges">Pledges</SelectItem>
             <SelectItem value="sales">Sales</SelectItem>
             <SelectItem value="donation">Donation</SelectItem>
             <SelectItem value="camp_payment">Camp Payment</SelectItem>

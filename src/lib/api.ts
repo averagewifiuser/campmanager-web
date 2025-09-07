@@ -20,7 +20,13 @@ import type {
   CustomField,
   CreateCustomFieldRequest,
   Church,
-  CreateChurchRequest
+  CreateChurchRequest,
+  InventoryItem,
+  CreateInventoryRequest,
+  Purchase,
+  CreatePurchaseRequest,
+  Pledge,
+  CreatePledgeRequest
 } from './types';
 
 // Create axios instance
@@ -350,7 +356,7 @@ export const financialsApi = {
       payment_method: 'cash' | 'check' | 'momo' | 'bank_transfer' | 'card';
       received_by: string;
       reference_number: string;
-      transaction_category: 'offering' | 'sales' | 'donation' | 'camp_payment' | 'camp_expense' | 'other';
+      transaction_category: 'offering' | 'sales' | 'donation' | 'camp_payment' | 'camp_expense' | 'pledge' | 'other';
       transaction_type: 'income' | 'expense';
     }
   ) => {
@@ -378,6 +384,67 @@ export const churchesApi = {
 
   deleteChurch: async (churchId: string): Promise<void> => {
     await api.delete(`/camps/churches/${churchId}`);
+  },
+};
+
+/**
+ * Inventory API
+ */
+export const inventoryApi = {
+  getCampInventory: async (campId: string): Promise<InventoryItem[]> => {
+    const response = await api.get<ApiResponse<InventoryItem[]>>(`/camps/${campId}/inventory`);
+    return response.data.data;
+  },
+  
+  createInventoryItem: async (campId: string, data: CreateInventoryRequest): Promise<InventoryItem> => {
+    const response = await api.post<ApiResponse<InventoryItem>>(`/camps/${campId}/inventory`, { data });
+    return response.data.data;
+  },
+  
+  updateInventoryItem: async (itemId: string, data: Partial<CreateInventoryRequest>): Promise<InventoryItem> => {
+    const response = await api.put<ApiResponse<InventoryItem>>(`/camps/inventory/${itemId}`, { data });
+    return response.data.data;
+  },
+  
+  deleteInventoryItem: async (itemId: string): Promise<void> => {
+    await api.delete(`/camps/inventory/${itemId}`);
+  },
+};
+
+/**
+ * Purchases API
+ */
+export const purchasesApi = {
+  getCampPurchases: async (campId: string): Promise<Purchase[]> => {
+    const response = await api.get<ApiResponse<Purchase[]>>(`/camps/${campId}/purchases`);
+    return response.data.data;
+  },
+  
+  createPurchase: async (campId: string, data: CreatePurchaseRequest): Promise<Purchase> => {
+    const response = await api.post<ApiResponse<Purchase>>(`/camps/${campId}/purchases`, { data });
+    return response.data.data;
+  },
+};
+
+/**
+ * Pledges API
+ */
+export const pledgesApi = {
+  getCampPledges: async (campId: string): Promise<Pledge[]> => {
+    const response = await api.get<ApiResponse<Pledge[]>>(`/camps/${campId}/pledges`);
+    return response.data.data;
+  },
+  
+  createPledge: async (campId: string, data: CreatePledgeRequest): Promise<Pledge> => {
+    const response = await api.post<ApiResponse<Pledge>>(`/camps/${campId}/pledges`, { data });
+    return response.data.data;
+  },
+  
+  updatePledgeStatus: async (pledgeId: string, status: 'pending' | 'fulfilled' | 'cancelled', campId: string): Promise<Pledge> => {
+    const response = await api.patch<ApiResponse<Pledge>>(`/camps/pledges/${pledgeId}/status`, { 
+      data: { status, camp_id: campId } 
+    });
+    return response.data.data;
   },
 };
 

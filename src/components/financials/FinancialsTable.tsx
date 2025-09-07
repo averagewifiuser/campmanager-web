@@ -73,6 +73,7 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       donation: "Donation",
       camp_payment: "Camp Payment",
       camp_expense: "Camp Expense",
+      pledge: "Pledge",
       other: "Other"
     };
     return categoryMap[category] || category;
@@ -89,6 +90,7 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       donation: "outline",
       camp_payment: "default",
       camp_expense: "destructive",
+      pledge: "secondary",
       other: "secondary"
     };
     return variantMap[category] || "secondary";
@@ -223,6 +225,7 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="offering">Offering</SelectItem>
+                <SelectItem value="pledge">Pledge</SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
                 <SelectItem value="donation">Donation</SelectItem>
                 <SelectItem value="camp_payment">Camp Payment</SelectItem>

@@ -242,3 +242,69 @@ export interface CampStats {
   registration_by_category: Record<string, number>;
   registration_by_church: Record<string, number>;
 }
+
+// Inventory types
+export interface InventoryItem {
+  id: string;
+  camp_id: string;
+  name: string;
+  description: string;
+  inventory_type: 'shirts' | 'books' | 'food' | 'equipment' | 'supplies' | 'other';
+  quantity: number;
+  cost: number;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateInventoryRequest {
+  name: string;
+  description: string;
+  inventory_type: 'shirts' | 'books' | 'food' | 'equipment' | 'supplies' | 'other';
+  quantity: number;
+  cost: number;
+}
+
+// Purchase types
+export interface PurchaseItem {
+  inventory_id: string;
+  quantity: number;
+}
+
+export interface Purchase {
+  id: string;
+  camp_id: string;
+  amount: number;
+  inventory_ids: string;
+  items: PurchaseItem[];
+  purchase_date: string;
+  sold_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePurchaseRequest {
+  amount: string;
+  inventory_ids: string;
+  items: PurchaseItem[];
+}
+
+// Pledge types
+export interface Pledge {
+  id: string;
+  camp_id: string;
+  camper_id: string;
+  camper_name: string;
+  camper_code: string;
+  amount: number;
+  status: string;
+  pledge_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePledgeRequest {
+  amount: string;
+  camper_id: string;
+  status: 'pending';
+}

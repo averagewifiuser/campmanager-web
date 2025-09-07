@@ -23,6 +23,9 @@ import SideNav from './components/layout/SideNav';
 import { useLocation, matchPath } from 'react-router-dom';
 import PaymentsPage from './pages/PaymentsPage';
 import FinancialsPage from './pages/FinancialsPage';
+import InventoryPage from './pages/InventoryPage';
+import PurchasesPage from './pages/PurchasesPage';
+import PledgesPage from './pages/PledgesPage';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -82,6 +85,33 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <FinancialsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Inventory page (protected) */}
+      <Route
+        path="/camps/:campId/inventory"
+        element={
+          <ProtectedRoute>
+            <InventoryPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Purchases page (protected) */}
+      <Route
+        path="/camps/:campId/purchases"
+        element={
+          <ProtectedRoute>
+            <PurchasesPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Pledges page (protected) */}
+      <Route
+        path="/camps/:campId/pledges"
+        element={
+          <ProtectedRoute>
+            <PledgesPage />
           </ProtectedRoute>
         }
       />
