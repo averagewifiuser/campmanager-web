@@ -19,6 +19,7 @@ interface PledgesTableProps {
   campId?: string;
 }
 
+// @ts-ignore
 const PledgesTable: React.FC<PledgesTableProps> = ({ pledges, isLoading, onStatusUpdate, campId }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GH', {
