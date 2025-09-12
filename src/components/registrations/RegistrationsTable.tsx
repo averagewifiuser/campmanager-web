@@ -58,6 +58,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { formatCurrency } from '@/lib/utils';
 import { 
   useUpdatePaymentStatus, 
@@ -642,427 +648,507 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
       </div>
 
 
-      {/* Empty state */}
-      {finalRegistrations.length === 0 && (
-        <div className="text-center py-12">
-          <UserCheck className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">
-            {hasActiveFilters ? 'No registrations match your filters' : 'No registrations yet'}
-          </h3>
-          <p className="text-muted-foreground">
-            {hasActiveFilters 
-              ? 'Try adjusting your filter criteria or clear all filters to see all registrations.'
-              : 'When people register for this camp, they\'ll appear here.'
-            }
-          </p>
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="mt-4"
-            >
-              Clear all filters
-            </Button>
+      {/* Tabs Container */}
+      <Tabs defaultValue="registrations" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="registrations">Registrations</TabsTrigger>
+          <TabsTrigger value="groupings">Groupings</TabsTrigger>
+        </TabsList>
+
+        {/* Registrations Tab */}
+        <TabsContent value="registrations" className="space-y-4">
+          {/* Empty state */}
+          {finalRegistrations.length === 0 && (
+            <div className="text-center py-12">
+              <UserCheck className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">
+                {hasActiveFilters ? 'No registrations match your filters' : 'No registrations yet'}
+              </h3>
+              <p className="text-muted-foreground">
+                {hasActiveFilters 
+                  ? 'Try adjusting your filter criteria or clear all filters to see all registrations.'
+                  : 'When people register for this camp, they\'ll appear here.'
+                }
+              </p>
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="mt-4"
+                >
+                  Clear all filters
+                </Button>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {/* View Options */}
-      {finalRegistrations.length > 0 && (
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAllDetails(!showAllDetails)}
-            >
-              {showAllDetails ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-              {showAllDetails ? 'Hide Details' : 'Show All Details'}
-            </Button>
-            
-            {showAllDetails && (
-              <div className="flex items-center gap-2">
+          {/* View Options */}
+          {finalRegistrations.length > 0 && (
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => setExpandedRows(new Set(finalRegistrations.map(r => r.id)))}
+                  onClick={() => setShowAllDetails(!showAllDetails)}
                 >
-                  Expand All
+                  {showAllDetails ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  {showAllDetails ? 'Hide Details' : 'Show All Details'}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setExpandedRows(new Set())}
-                >
-                  Collapse All
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Table and related UI - Only show when there are registrations */}
-      {finalRegistrations.length > 0 && (
-        <>
-          {/* Bulk Actions */}
-          {someSelected && (
-            <div className="mb-4 p-4 bg-muted rounded-lg flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {selectedRegistrations.length} registration(s) selected
-              </span>
-              <div className="flex space-x-2">
-                <Button size="sm" variant="outline">
-                  Mark as Paid
-                </Button>
-                <Button size="sm" variant="outline">
-                  Check In
-                </Button>
-                <Button size="sm" variant="outline">
-                  Export Selected
-                </Button>
+                
+                {showAllDetails && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedRows(new Set(finalRegistrations.map(r => r.id)))}
+                    >
+                      Expand All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedRows(new Set())}
+                    >
+                      Collapse All
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Export Button */}
-          {/* <div className="mb-4 flex justify-end">
-            <Button variant="outline" size="sm" onClick={exportToCSV}>
-              <Download className="h-4 w-4 mr-2" />
-              Export All
-            </Button>
-          </div> */}
+          {/* Table and related UI - Only show when there are registrations */}
+          {finalRegistrations.length > 0 && (
+            <>
+              {/* Bulk Actions */}
+              {someSelected && (
+                <div className="mb-4 p-4 bg-muted rounded-lg flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {selectedRegistrations.length} registration(s) selected
+                  </span>
+                  <div className="flex space-x-2">
+                    <Button size="sm" variant="outline">
+                      Mark as Paid
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      Check In
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      Export Selected
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          {/* Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
-                  {showAllDetails && <TableHead className="w-[30px]"></TableHead>}
-                  <TableHead>Camper Code</TableHead>
-                  <TableHead>Participant</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Emergency Contact</TableHead>
-                  {showAllDetails && <TableHead>Church</TableHead>}
-                  {showAllDetails && <TableHead>Category</TableHead>}
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Check-in</TableHead>
-                  <TableHead>Registered</TableHead>
-                  <TableHead className="w-[70px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedRegistrations.map((registration) => {
-                  const isExpanded = expandedRows.has(registration.id);
-                  const church = churches.find(c => c.id === registration.church_id);
-                  const category = categories.find(c => c.id === registration.category_id);
-                  
-                  return (
-                    <>
-                      <TableRow key={registration.id} id={`registration-${registration.id}`}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedRegistrations.includes(registration.id)}
-                            onCheckedChange={(checked) => 
-                              handleSelectRegistration(registration.id, checked as boolean)
-                            }
-                          />
-                        </TableCell>
-                        
-                        {showAllDetails && (
-                          <TableCell>
-                            {Object.keys(registration.custom_field_responses).length > 0 && (
+              {/* Table */}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
+                      {showAllDetails && <TableHead className="w-[30px]"></TableHead>}
+                      <TableHead>Camper Code</TableHead>
+                      <TableHead>Participant</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Emergency Contact</TableHead>
+                      {showAllDetails && <TableHead>Church</TableHead>}
+                      {showAllDetails && <TableHead>Category</TableHead>}
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Check-in</TableHead>
+                      <TableHead>Registered</TableHead>
+                      <TableHead className="w-[70px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRegistrations.map((registration) => {
+                      const isExpanded = expandedRows.has(registration.id);
+                      const church = churches.find(c => c.id === registration.church_id);
+                      const category = categories.find(c => c.id === registration.category_id);
+                      
+                      return (
+                        <>
+                          <TableRow key={registration.id} id={`registration-${registration.id}`}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedRegistrations.includes(registration.id)}
+                                onCheckedChange={(checked) => 
+                                  handleSelectRegistration(registration.id, checked as boolean)
+                                }
+                              />
+                            </TableCell>
+                            
+                            {showAllDetails && (
+                              <TableCell>
+                                {Object.keys(registration.custom_field_responses).length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleRowExpansion(registration.id)}
+                                    className="p-0 h-6 w-6"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            )}
+                            
+                            <TableCell>{registration.camper_code}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium">
+                                  {registration.surname} {registration.middle_name} {registration.last_name}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  Age: {registration.age}
+                                </div>
+                              </div>
+                            </TableCell>
+                            
+                            <TableCell>
+                              <div className="space-y-1">
+                                {registration.email && (
+                                  <div className="flex items-center space-x-1 text-sm">
+                                    <Mail className="h-3 w-3" />
+                                    <span>{registration.email}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center space-x-1 text-sm">
+                                  <Phone className="h-3 w-3" />
+                                  <span>{registration.phone_number}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="text-sm font-medium">
+                                  {registration.emergency_contact_name}
+                                </div>
+                                <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  <span>{registration.emergency_contact_phone}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            
+                            {showAllDetails && (
+                              <TableCell>
+                                <div className="text-sm">
+                                  {church?.name || 'N/A'}
+                                </div>
+                              </TableCell>
+                            )}
+                            
+                            {showAllDetails && (
+                              <TableCell>
+                                <div className="text-sm">
+                                  {category?.name || 'N/A'}
+                                </div>
+                              </TableCell>
+                            )}
+                            
+                            <TableCell>
+                              <div className="font-medium">
+                                {formatCurrency(registration.total_amount)}
+                              </div>
+                            </TableCell>
+                            
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toggleRowExpansion(registration.id)}
-                                className="p-0 h-6 w-6"
+                                disabled={updatePaymentMutation.isPending}
                               >
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4" />
+                                {registration.has_paid ? (
+                                  <Badge variant="default" className="cursor-pointer">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Paid
+                                  </Badge>
                                 ) : (
-                                  <ChevronRight className="h-4 w-4" />
+                                  <Badge variant="destructive" className="cursor-pointer">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Unpaid
+                                  </Badge>
                                 )}
                               </Button>
-                            )}
-                          </TableCell>
-                        )}
-                        
-                        <TableCell>{registration.camper_code}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="font-medium">
-                              {registration.surname} {registration.middle_name} {registration.last_name}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Age: {registration.age}
-                            </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="space-y-1">
-                            {registration.email && (
-                              <div className="flex items-center space-x-1 text-sm">
-                                <Mail className="h-3 w-3" />
-                                <span>{registration.email}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center space-x-1 text-sm">
-                              <Phone className="h-3 w-3" />
-                              <span>{registration.phone_number}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium">
-                              {registration.emergency_contact_name}
-                            </div>
-                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              <span>{registration.emergency_contact_phone}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        
-                        {showAllDetails && (
-                          <TableCell>
-                            <div className="text-sm">
-                              {church?.name || 'N/A'}
-                            </div>
-                          </TableCell>
-                        )}
-                        
-                        {showAllDetails && (
-                          <TableCell>
-                            <div className="text-sm">
-                              {category?.name || 'N/A'}
-                            </div>
-                          </TableCell>
-                        )}
-                        
-                        <TableCell>
-                          <div className="font-medium">
-                            {formatCurrency(registration.total_amount)}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={updatePaymentMutation.isPending}
-                          >
-                            {registration.has_paid ? (
-                              <Badge variant="default" className="cursor-pointer">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Paid
-                              </Badge>
-                            ) : (
-                              <Badge variant="destructive" className="cursor-pointer">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Unpaid
-                              </Badge>
-                            )}
-                          </Button>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleCheckinToggle(registration)}
-                            disabled={updateCheckinMutation.isPending}
-                          >
-                            {registration.has_checked_in ? (
-                              <Badge variant="default" className="cursor-pointer">
-                                <UserCheck className="h-3 w-3 mr-1" />
-                                Checked In
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="cursor-pointer">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Not Checked In
-                              </Badge>
-                            )}
-                          </Button>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="text-sm">
-                            {format(new Date(registration.registration_date), 'MMM dd, yyyy')}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => onEditRegistration?.(registration)}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
+                            </TableCell>
+                            
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleCheckinToggle(registration)}
+                                disabled={updateCheckinMutation.isPending}
                               >
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                Toggle Check-in
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteClick(registration)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Cancel Registration
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                      
-                      {/* Expanded row for custom field details */}
-                      {showAllDetails && isExpanded && Object.keys(registration.custom_field_responses).length > 0 && (
-                        <TableRow>
-                          <TableCell colSpan={showAllDetails ? 12 : 10} className="bg-muted/20">
-                            <div className="p-4">
-                              <h4 className="font-medium mb-3">Custom Field Responses</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {Object.entries(registration.custom_field_responses).map(([fieldId, value]) => {
-                                  const field = customFields.find(f => f.id === fieldId);
-                                  if (!field) return null;
-                                  
-                                  return (
-                                    <div key={fieldId} className="space-y-1">
-                                      <div className="text-sm font-medium text-muted-foreground">
-                                        {field.field_name}
-                                      </div>
-                                      <div className="text-sm">
-                                        {formatCustomFieldResponse(field, value)}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                                {registration.has_checked_in ? (
+                                  <Badge variant="default" className="cursor-pointer">
+                                    <UserCheck className="h-3 w-3 mr-1" />
+                                    Checked In
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="cursor-pointer">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Not Checked In
+                                  </Badge>
+                                )}
+                              </Button>
+                            </TableCell>
+                            
+                            <TableCell>
+                              <div className="text-sm">
+                                {format(new Date(registration.registration_date), 'MMM dd, yyyy')}
                               </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Rows per page:</span>
-                <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
-                  <SelectTrigger className="w-[70px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
+                            </TableCell>
+                            
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem
+                                    onClick={() => onEditRegistration?.(registration)}
+                                  >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleCheckinToggle(registration)}
+                                  >
+                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    Toggle Check-in
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteClick(registration)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Cancel Registration
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* Expanded row for custom field details */}
+                          {showAllDetails && isExpanded && Object.keys(registration.custom_field_responses).length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={showAllDetails ? 12 : 10} className="bg-muted/20">
+                                <div className="p-4">
+                                  <h4 className="font-medium mb-3">Custom Field Responses</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {Object.entries(registration.custom_field_responses).map(([fieldId, value]) => {
+                                      const field = customFields.find(f => f.id === fieldId);
+                                      if (!field) return null;
+                                      
+                                      return (
+                                        <div key={fieldId} className="space-y-1">
+                                          <div className="text-sm font-medium text-muted-foreground">
+                                            {field.field_name}
+                                          </div>
+                                          <div className="text-sm">
+                                            {formatCustomFieldResponse(field, value)}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, finalRegistrations.length)} of {finalRegistrations.length} entries
-                </span>
-              </div>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Rows per page:</span>
+                    <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
+                      <SelectTrigger className="w-[70px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(1)}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                {/* Page numbers */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1} to {Math.min(endIndex, finalRegistrations.length)} of {finalRegistrations.length} entries
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
                     <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                      className="w-8"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
                     >
-                      {pageNum}
+                      <ChevronsLeft className="h-4 w-4" />
                     </Button>
-                  );
-                })}
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(totalPages)}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-8"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* Groupings Tab */}
+        <TabsContent value="groupings" className="space-y-4">
+          {Object.keys(groupedCustomFieldResponses).length === 0 ? (
+            <div className="text-center py-12">
+              <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">No Custom Fields with Options</h3>
+              <p className="text-muted-foreground">
+                Groupings will appear here when you have custom fields with dropdown options.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedCustomFieldResponses).map(([fieldId, groups]) => {
+                const field = customFields.find(f => f.id === fieldId);
+                if (!field) return null;
+
+                return (
+                  <div key={fieldId} className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">{field.field_name}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {Object.values(groups).reduce((total, regs) => total + regs.length, 0)} total responses
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {Object.entries(groups).map(([option, registrations]) => (
+                        <div key={option} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-sm">{option}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {registrations.length}
+                            </Badge>
+                          </div>
+                          
+                          {registrations.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {registrations.map((reg) => (
+                                <div key={reg.id} className="text-xs p-2 bg-muted/50 rounded">
+                                  <div className="font-medium">
+                                    {getRegistrationDisplayName(reg)}
+                                  </div>
+                                  <div className="text-muted-foreground">
+                                    {reg.camper_code}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge 
+                                      variant={reg.has_paid ? "default" : "destructive"} 
+                                      className="text-xs px-1 py-0"
+                                    >
+                                      {reg.has_paid ? "Paid" : "Unpaid"}
+                                    </Badge>
+                                    <Badge 
+                                      variant={reg.has_checked_in ? "default" : "secondary"} 
+                                      className="text-xs px-1 py-0"
+                                    >
+                                      {reg.has_checked_in ? "In" : "Out"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground text-center py-4">
+                              No registrations
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
