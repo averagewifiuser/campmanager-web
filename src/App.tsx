@@ -26,6 +26,7 @@ import FinancialsPage from './pages/FinancialsPage';
 import InventoryPage from './pages/InventoryPage';
 import PurchasesPage from './pages/PurchasesPage';
 import PledgesPage from './pages/PledgesPage';
+import { Toaster } from './components/ui/toaster';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -251,6 +252,7 @@ function App() {
           <MainLayout>
             <AppRoutes />
           </MainLayout>
+          <Toaster />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

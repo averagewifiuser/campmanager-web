@@ -8,9 +8,12 @@ import { purchasesApi } from "@/lib/api";
 import { Purchase, CreatePurchaseRequest } from "@/lib/types";
 import PurchasesTable from "@/components/purchases/PurchasesTable";
 import PurchaseForm from "@/components/purchases/PurchaseForm";
+import { useToast } from "@/hooks/use-toast";
+import { FullPageLoader } from "@/components/ui/full-page-loader";
 
 const PurchasesPage = () => {
   const { campId } = useParams();
+  const { toast } = useToast();
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
@@ -73,9 +76,30 @@ const PurchasesPage = () => {
       const updatedPurchases = await purchasesApi.getCampPurchases(campId);
       setPurchases(updatedPurchases || []);
       setSideNavOpen(false);
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Purchase has been recorded successfully.",
+        variant: "default",
+      });
+    } catch (error: any) {
       console.error('Error saving purchase:', error);
-      // Optionally handle error (e.g., show toast)
+      
+      // Handle 500 errors specifically
+      if (error?.response?.status === 500 || error?.status === 500) {
+        toast({
+          title: "Something went wrong",
+          description: "We encountered an unexpected error while processing your purchase. Please try again later.",
+          variant: "destructive",
+        });
+      } else {
+        // Handle other errors
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to create purchase";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setFormLoading(false);
     }
@@ -102,6 +126,9 @@ const PurchasesPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Full Page Loader */}
+      {formLoading && <FullPageLoader message="Processing purchase..." />}
+      
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">

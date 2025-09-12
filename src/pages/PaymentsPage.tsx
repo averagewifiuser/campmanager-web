@@ -6,6 +6,8 @@ import { X, Search, Plus, DollarSign, Users, TrendingUp, Calendar } from "lucide
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { paymentsApi, registrationsApi } from "@/lib/api";
 import PaymentsTable from "@/components/payments/PaymentsTable"; // Updated import
+import { useToast } from "@/hooks/use-toast";
+import { FullPageLoader } from "@/components/ui/full-page-loader";
 
 // Mock UI Components (keep your existing mock components)
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & { className?: string };
@@ -286,6 +288,7 @@ const PaymentForm = ({ registrations, onSubmit, onCancel, loading }: PaymentForm
 // Main Payments Page Component
 const PaymentsPage = () => {
   const { campId } = useParams();
+  const { toast } = useToast();
   const [payments, setPayments] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
@@ -350,8 +353,30 @@ const PaymentsPage = () => {
       const updatedPayments = await paymentsApi.getCampPayments(campId);
       setPayments(updatedPayments || []);
       setSideNavOpen(false);
-    } catch (error) {
-      // Optionally handle error (e.g., show toast)
+      toast({
+        title: "Success",
+        description: "Payment has been recorded successfully.",
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error('Error creating payment:', error);
+      
+      // Handle 500 errors specifically
+      if (error?.response?.status === 500 || error?.status === 500) {
+        toast({
+          title: "Something went wrong",
+          description: "We encountered an unexpected error while processing your payment. Please try again later.",
+          variant: "destructive",
+        });
+      } else {
+        // Handle other errors
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to create payment";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setFormLoading(false);
     }
@@ -374,6 +399,9 @@ const PaymentsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Full Page Loader */}
+      {formLoading && <FullPageLoader message="Processing payment..." />}
+      
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">

@@ -7,9 +7,12 @@ import { pledgesApi, registrationsApi } from "@/lib/api";
 import PledgesTable from "@/components/pledges/PledgesTable";
 import PledgeForm from "@/components/pledges/PledgeForm";
 import { Pledge } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { FullPageLoader } from "@/components/ui/full-page-loader";
 
 const PledgesPage = () => {
   const { campId } = useParams();
+  const { toast } = useToast();
   const [pledges, setPledges] = useState<Pledge[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
@@ -65,9 +68,30 @@ const PledgesPage = () => {
       const updatedPledges = await pledgesApi.getCampPledges(campId);
       setPledges(updatedPledges || []);
       setSideNavOpen(false);
-    } catch (error) {
-      // Optionally handle error (e.g., show toast)
+      toast({
+        title: "Success",
+        description: "Pledge has been created successfully.",
+        variant: "default",
+      });
+    } catch (error: any) {
       console.error('Error creating pledge:', error);
+      
+      // Handle 500 errors specifically
+      if (error?.response?.status === 500 || error?.status === 500) {
+        toast({
+          title: "Something went wrong",
+          description: "We encountered an unexpected error while processing your pledge. Please try again later.",
+          variant: "destructive",
+        });
+      } else {
+        // Handle other errors
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to create pledge";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setFormLoading(false);
     }
@@ -103,6 +127,9 @@ const PledgesPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Full Page Loader */}
+      {formLoading && <FullPageLoader message="Processing pledge..." />}
+      
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">

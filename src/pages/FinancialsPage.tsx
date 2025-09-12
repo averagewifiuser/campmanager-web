@@ -7,10 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { financialsApi } from "@/lib/api";
 import FinancialsTable from "@/components/financials/FinancialsTable";
 import FinancialForm from "@/components/financials/FinancialForm";
+import { useToast } from "@/hooks/use-toast";
+import { FullPageLoader } from "@/components/ui/full-page-loader";
 
 // Main Financials Page Component
 const FinancialsPage = () => {
   const { campId } = useParams();
+  const { toast } = useToast();
   const [financials, setFinancials] = useState<any[]>([]);
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
@@ -80,9 +83,30 @@ const FinancialsPage = () => {
       const updatedFinancials = await financialsApi.getCampFinancials(campId);
       setFinancials(updatedFinancials || []);
       setSideNavOpen(false);
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Financial record has been created successfully.",
+        variant: "default",
+      });
+    } catch (error: any) {
       console.error('Error creating financial record:', error);
-      // Optionally handle error (e.g., show toast)
+      
+      // Handle 500 errors specifically
+      if (error?.response?.status === 500 || error?.status === 500) {
+        toast({
+          title: "Something went wrong",
+          description: "We encountered an unexpected error while processing your financial record. Please try again later.",
+          variant: "destructive",
+        });
+      } else {
+        // Handle other errors
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to create financial record";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setFormLoading(false);
     }
@@ -105,6 +129,9 @@ const FinancialsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Full Page Loader */}
+      {formLoading && <FullPageLoader message="Processing financial record..." />}
+      
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
