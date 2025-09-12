@@ -1,18 +1,28 @@
 import React from 'react';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { CamperData } from '../hooks/useOtpVerification';
+import { Edit } from 'lucide-react';
 
 export const CamperDataPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const camperData = location.state?.camperData as CamperData;
 
   // Redirect if no camper data
   if (!camperData) {
     return <Navigate to="/camper-verification" replace />;
   }
+
+  const handleEditInformation = () => {
+    // Navigate to edit registration page with camper data
+    navigate(`/camper-edit/${camperData.id}`, {
+      state: { camperData },
+      replace: false,
+    });
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -33,10 +43,21 @@ export const CamperDataPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Camper Information</h1>
-          <p className="text-gray-600 mt-2">
-            Welcome back! Here's your camp registration information.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Camper Information</h1>
+              <p className="text-gray-600 mt-2">
+                Welcome back! Here's your camp registration information.
+              </p>
+            </div>
+            <Button
+              onClick={handleEditInformation}
+              className="flex items-center space-x-2"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Edit Information</span>
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

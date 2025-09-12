@@ -1,5 +1,5 @@
 // src/components/public/PublicRegistrationForm.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -115,7 +115,9 @@ const createRegistrationSchema = (customFields: CustomField[]) => {
 };
 
 interface PublicRegistrationFormProps {
-  registrationData: PublicRegistrationData;
+  registrationData: PublicRegistrationData & {
+    prefilledValues?: Partial<RegistrationFormData>;
+  };
   onSubmit: (data: RegistrationFormData) => Promise<void>;
   isSubmitting?: boolean;
   submitError?: string | null;
@@ -157,6 +159,33 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
       custom_field_responses: {},
     },
   });
+
+  // Reset form with prefilled values when they become available
+  useEffect(() => {
+    if (registrationData.prefilledValues) {
+      const prefilledFormData = {
+        surname: registrationData.prefilledValues.surname || "",
+        middle_name: registrationData.prefilledValues.middle_name || "",
+        last_name: registrationData.prefilledValues.last_name || "",
+        sex: registrationData.prefilledValues.sex as "male" | "female" | undefined,
+        age: registrationData.prefilledValues.age || 18,
+        email: registrationData.prefilledValues.email || "",
+        phone_number: registrationData.prefilledValues.phone_number || "",
+        emergency_contact_name: registrationData.prefilledValues.emergency_contact_name || "",
+        emergency_contact_phone: registrationData.prefilledValues.emergency_contact_phone || "",
+        church_id: registrationData.prefilledValues.church_id || "",
+        category_id: registrationData.prefilledValues.category_id || "",
+        custom_field_responses: registrationData.prefilledValues.custom_field_responses || {},
+      };
+      
+      form.reset(prefilledFormData);
+      
+      // Set the selected category for the UI state
+      if (registrationData.prefilledValues.category_id) {
+        setSelectedCategoryId(registrationData.prefilledValues.category_id);
+      }
+    }
+  }, [registrationData.prefilledValues, form]);
 
   // @ts-ignore
   const selectedCategory = categories.find(
@@ -772,12 +801,12 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                   {isSubmitting ? (
                     <>
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                      Registering...
+                      {registrationData.prefilledValues ? 'Updating...' : 'Registering...'}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Complete Registration
+                      {registrationData.prefilledValues ? 'Update Information' : 'Complete Registration'}
                       {/* {selectedCategory && (
                         <span className="ml-2">
                           - {formatCurrency(selectedCategory.calculated_fee)}
@@ -788,8 +817,10 @@ export const PublicRegistrationForm: React.FC<PublicRegistrationFormProps> = ({
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  By registering, you confirm that all information provided is
-                  accurate.
+                  {registrationData.prefilledValues 
+                    ? 'By updating, you confirm that all information provided is accurate.'
+                    : 'By registering, you confirm that all information provided is accurate.'
+                  }
                 </p>
               </div>
             </form>

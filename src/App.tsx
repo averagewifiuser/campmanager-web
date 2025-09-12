@@ -14,6 +14,7 @@ import { PublicRegistrationPage } from './pages/PublicRegistrationPage';
 import { LinkRegistrationPage } from './pages/LinkRegistrationPage';
 import { CamperVerificationPage } from './pages/CamperVerificationPage';
 import { CamperDataPage } from './pages/CamperDataPage';
+import { CamperEditPage } from './pages/CamperEditPage';
 import { RegistrationLinksManagementPage } from './pages/RegistrationLinksManagementPage';
 import { CustomFieldsManagementPage } from './pages/CustomFieldsManagementPage';
 import { ChurchesManagementPage } from './pages/ChurchesManagementPage';
@@ -146,6 +147,11 @@ function AppRoutes() {
       <Route
         path="/camper-data"
         element={<CamperDataPage />}
+      />
+
+      <Route
+        path="/camper-edit/:registrationId"
+        element={<CamperEditPage />}
       />
 
       {/* Protected routes */}
