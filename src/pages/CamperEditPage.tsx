@@ -16,6 +16,7 @@ import { ArrowLeft } from 'lucide-react';
 export const CamperEditPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  //@ts-ignore
   const { registrationId } = useParams<{ registrationId: string }>();
   const { toast } = useToast();
   const camperData = location.state?.camperData as CamperData;
