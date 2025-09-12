@@ -27,6 +27,10 @@ import FinancialsPage from './pages/FinancialsPage';
 import InventoryPage from './pages/InventoryPage';
 import PurchasesPage from './pages/PurchasesPage';
 import PledgesPage from './pages/PledgesPage';
+import RoomsPage from './pages/RoomsPage';
+import RoomAllocationsPage from './pages/RoomAllocationsPage';
+import FoodPage from './pages/FoodPage';
+import FoodAllocationsPage from './pages/FoodAllocationsPage';
 import { Toaster } from './components/ui/toaster';
 
 // Create a query client
@@ -114,6 +118,42 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PledgesPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Rooms page (protected) */}
+      <Route
+        path="/camps/:campId/rooms"
+        element={
+          <ProtectedRoute>
+            <RoomsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Room Allocations page (protected) */}
+      <Route
+        path="/camps/:campId/room-allocations"
+        element={
+          <ProtectedRoute>
+            <RoomAllocationsPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Food page (protected) */}
+      <Route
+        path="/camps/:campId/food"
+        element={
+          <ProtectedRoute>
+            <FoodPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Food Allocations page (protected) */}
+      <Route
+        path="/camps/:campId/food-allocations"
+        element={
+          <ProtectedRoute>
+            <FoodAllocationsPage />
           </ProtectedRoute>
         }
       />

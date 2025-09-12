@@ -448,6 +448,144 @@ export const pledgesApi = {
   },
 };
 
+/**
+ * Rooms API
+ */
+export const roomsApi = {
+  getCampRooms: async (campId: string): Promise<any[]> => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/rooms`);
+    return response.data.data;
+  },
+  
+  createRoom: async (campId: string, data: {
+    hostel_name: string;
+    block: string;
+    room_number: string;
+    room_capacity: number;
+    is_special_room: boolean;
+    extra_beds: number;
+    room_gender: 'male' | 'female' | 'other';
+    is_damaged: boolean;
+    misc_info?: string;
+    adjoining_to?: string;
+  }): Promise<any> => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/rooms`, { data });
+    return response.data.data;
+  },
+  
+  updateRoom: async (roomId: string, data: any): Promise<any> => {
+    const response = await api.put<ApiResponse<any>>(`/camps/rooms/${roomId}`, { data });
+    return response.data.data;
+  },
+  
+  deleteRoom: async (roomId: string): Promise<void> => {
+    await api.delete(`/camps/rooms/${roomId}`);
+  },
+  
+  getAvailableRooms: async (campId: string, gender?: string): Promise<any[]> => {
+    const query = gender ? `?gender=${gender}` : '';
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/rooms/available${query}`);
+    return response.data.data;
+  },
+};
+
+/**
+ * Room Allocations API
+ */
+export const roomAllocationsApi = {
+  getCampRoomAllocations: async (campId: string): Promise<any[]> => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/room-allocations`);
+    return response.data.data;
+  },
+  
+  allocateRoom: async (campId: string, data: {
+    room_id: string;
+    registration_ids: string[];
+    notes?: string;
+  }): Promise<any> => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/room-allocations`, { data });
+    return response.data.data;
+  },
+  
+  updateRoomAllocation: async (allocationId: string, data: {
+    is_active?: boolean;
+    notes?: string;
+  }): Promise<any> => {
+    const response = await api.put<ApiResponse<any>>(`/camps/room-allocations/${allocationId}`, { data });
+    return response.data.data;
+  },
+  
+  deallocateRoom: async (allocationId: string): Promise<void> => {
+    await api.delete(`/camps/room-allocations/${allocationId}`);
+  },
+};
+
+/**
+ * Food API
+ */
+export const foodApi = {
+  getCampFoods: async (campId: string): Promise<any[]> => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/foods`);
+    return response.data.data;
+  },
+  
+  createFood: async (campId: string, data: {
+    name: string;
+    quantity: number;
+    vendor: string;
+    date: string;
+    category: 'lunch' | 'supper' | 'snacks' | 'breakfast';
+  }): Promise<any> => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/foods`, { data });
+    return response.data.data;
+  },
+  
+  updateFood: async (foodId: string, data: any): Promise<any> => {
+    const response = await api.put<ApiResponse<any>>(`/camps/foods/${foodId}`, { data });
+    return response.data.data;
+  },
+  
+  deleteFood: async (foodId: string): Promise<void> => {
+    await api.delete(`/camps/foods/${foodId}`);
+  },
+};
+
+/**
+ * Food Allocations API
+ */
+export const foodAllocationsApi = {
+  getCampFoodAllocations: async (campId: string): Promise<any[]> => {
+    const response = await api.get<ApiResponse<any[]>>(`/camps/${campId}/food-allocations`);
+    return response.data.data;
+  },
+  
+  allocateFood: async (campId: string, data: {
+    food_id: string;
+    registration_id: string;
+  }): Promise<any> => {
+    const response = await api.post<ApiResponse<any>>(`/camps/${campId}/food-allocations`, { data });
+    return response.data.data;
+  },
+  
+  bulkAllocateFood: async (campId: string, data: {
+    food_id: string;
+    registration_ids: string[];
+    category_id?: string;
+  }): Promise<any[]> => {
+    const response = await api.post<ApiResponse<any[]>>(`/camps/${campId}/food-allocations/bulk`, { data });
+    return response.data.data;
+  },
+  
+  getFoodAllocation: async (allocationId: string): Promise<any> => {
+    const response = await api.get<ApiResponse<any>>(`/camps/food-allocations/${allocationId}`);
+    return response.data.data;
+  },
+  
+  deleteFoodAllocation: async (allocationId: string): Promise<void> => {
+    await api.delete(`/camps/food-allocations/${allocationId}`);
+  },
+};
+
 // Error handler utility
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
