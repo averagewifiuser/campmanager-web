@@ -33,6 +33,7 @@ import FoodPage from './pages/FoodPage';
 import FoodAllocationsPage from './pages/FoodAllocationsPage';
 import { CamperQRCodePage } from './pages/CamperQRCodePage';
 import { Toaster } from './components/ui/toaster';
+import { PermissionGuard } from './components/auth/PermissionGuard';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -77,84 +78,102 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Payments page (protected) */}
+      {/* Payments page (protected with permissions) */}
       <Route
         path="/camps/:campId/payments"
         element={
           <ProtectedRoute>
-            <PaymentsPage />
+            <PermissionGuard permission="payments">
+              <PaymentsPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Financials page (protected) */}
+      {/* Financials page (protected with permissions) */}
       <Route
         path="/camps/:campId/financials"
         element={
           <ProtectedRoute>
-            <FinancialsPage />
+            <PermissionGuard permission="financials">
+              <FinancialsPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Inventory page (protected) */}
+      {/* Inventory page (protected with permissions) */}
       <Route
         path="/camps/:campId/inventory"
         element={
           <ProtectedRoute>
-            <InventoryPage />
+            <PermissionGuard permission="inventory">
+              <InventoryPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Purchases page (protected) */}
+      {/* Purchases page (protected with permissions) */}
       <Route
         path="/camps/:campId/purchases"
         element={
           <ProtectedRoute>
-            <PurchasesPage />
+            <PermissionGuard permission="purchases">
+              <PurchasesPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Pledges page (protected) */}
+      {/* Pledges page (protected with permissions) */}
       <Route
         path="/camps/:campId/pledges"
         element={
           <ProtectedRoute>
-            <PledgesPage />
+            <PermissionGuard permission="pledges">
+              <PledgesPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Rooms page (protected) */}
+      {/* Rooms page (protected with permissions) */}
       <Route
         path="/camps/:campId/rooms"
         element={
           <ProtectedRoute>
-            <RoomsPage />
+            <PermissionGuard permission="rooms">
+              <RoomsPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Room Allocations page (protected) */}
+      {/* Room Allocations page (protected with permissions) */}
       <Route
         path="/camps/:campId/room-allocations"
         element={
           <ProtectedRoute>
-            <RoomAllocationsPage />
+            <PermissionGuard permission="room_allocations">
+              <RoomAllocationsPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Food page (protected) */}
+      {/* Food page (protected with permissions) */}
       <Route
         path="/camps/:campId/food"
         element={
           <ProtectedRoute>
-            <FoodPage />
+            <PermissionGuard permission="food">
+              <FoodPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />
-      {/* Food Allocations page (protected) */}
+      {/* Food Allocations page (protected with permissions) */}
       <Route
         path="/camps/:campId/food-allocations"
         element={
           <ProtectedRoute>
-            <FoodAllocationsPage />
+            <PermissionGuard permission="food_allocations">
+              <FoodAllocationsPage />
+            </PermissionGuard>
           </ProtectedRoute>
         }
       />

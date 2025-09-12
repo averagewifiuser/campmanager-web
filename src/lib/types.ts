@@ -4,6 +4,7 @@ export interface User {
   email: string;
   full_name: string;
   role: 'camp_manager' | 'volunteer';
+  page_permissions?: string[];
   created_at: string;
   updated_at: string;
 }

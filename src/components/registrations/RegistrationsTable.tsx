@@ -1,5 +1,5 @@
 // src/components/registrations/RegistrationsTable.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { 
   MoreHorizontal, 
@@ -12,7 +12,14 @@ import {
   Mail,
   Filter,
   X,
-  Search
+  Search,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +67,8 @@ import {
 } from '@/hooks/useRegistrations';
 import { useChurches } from '@/hooks/useChurches';
 import { useCategories } from '@/hooks/useCategories';
-import type { Registration } from '@/lib/types';
+import { useCustomFields } from '@/hooks/useCustomFields';
+import type { Registration, CustomField } from '@/lib/types';
 
 interface RegistrationsTableProps {
   campId: string;
@@ -78,10 +86,19 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   // Filter state
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
+  
+  // View state
+  const [showAllDetails, setShowAllDetails] = useState<boolean>(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   
   // Fetch data with filters
   const { data: allRegistrations = [], isLoading } = useCampRegistrations(campId, {
@@ -106,6 +123,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   // Fetch filter options
   const { data: churches = [] } = useChurches(campId);
   const { data: categories = [] } = useCategories(campId);
+  const { data: customFields = [] } = useCustomFields(campId);
   
   const updatePaymentMutation = useUpdatePaymentStatus();
   const updateCheckinMutation = useUpdateCheckinStatus();
@@ -194,11 +212,13 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const clearFilters = () => {
     setChurchFilter('all');
     setCategoryFilter('all');
+    setCustomFieldFilters({});
     setSearchQuery('');
     setShowSearchResults(false);
   };
 
-  const hasActiveFilters = churchFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim() !== '';
+  const hasActiveFilters = churchFilter !== 'all' || categoryFilter !== 'all' || 
+    Object.keys(customFieldFilters).length > 0 || searchQuery.trim() !== '';
   
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -208,6 +228,145 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
 
   const getRegistrationDisplayName = (reg: Registration) => {
     return `${reg.surname || ""} ${reg.middle_name || ""} ${reg.last_name || ""}`.trim();
+  };
+
+  // Helper function to get custom field name by ID
+  //@ts-ignore
+  const getCustomFieldName = (fieldId: string): string => {
+    const field = customFields.find(f => f.id === fieldId);
+    return field?.field_name || fieldId;
+  };
+
+  // Helper function to format custom field response
+  const formatCustomFieldResponse = (field: CustomField, value: any): string => {
+    if (value === null || value === undefined || value === '') return 'N/A';
+    
+    if (field.field_type === 'checkbox') {
+      return value ? 'Yes' : 'No';
+    }
+    
+    if (field.field_type === 'dropdown' && field.options) {
+      // For dropdown fields, show the actual option value
+      return String(value);
+    }
+    
+    if (field.field_type === 'date') {
+      try {
+        return format(new Date(value), 'MMM dd, yyyy');
+      } catch {
+        return String(value);
+      }
+    }
+    
+    return String(value);
+  };
+
+  // Group custom field responses by field with options
+  //@ts-ignore
+  const groupedCustomFieldResponses = useMemo(() => {
+    const grouped: Record<string, Record<string, Registration[]>> = {};
+    
+    customFields.forEach(field => {
+      if (field.options && field.options.length > 0) {
+        grouped[field.id] = {};
+        
+        // Initialize groups for each option
+        field.options.forEach(option => {
+          grouped[field.id][option] = [];
+        });
+        
+        // Add "Other" group for any responses not in options
+        grouped[field.id]['Other'] = [];
+        
+        // Group registrations by their response to this field
+        registrations.forEach(reg => {
+          const response = reg.custom_field_responses[field.id];
+          if (response !== null && response !== undefined && response !== '') {
+            const responseStr = String(response);
+            if (field.options!.includes(responseStr)) {
+              grouped[field.id][responseStr].push(reg);
+            } else {
+              grouped[field.id]['Other'].push(reg);
+            }
+          }
+        });
+      }
+    });
+    
+    return grouped;
+  }, [customFields, registrations]);
+
+  // Filter registrations by custom fields
+  const filteredByCustomFields = useMemo(() => {
+    if (Object.keys(customFieldFilters).length === 0) return registrations;
+    
+    return registrations.filter(reg => {
+      return Object.entries(customFieldFilters).every(([fieldId, filterValue]) => {
+        if (filterValue === 'all') return true;
+        
+        const response = reg.custom_field_responses[fieldId];
+        if (response === null || response === undefined || response === '') {
+          return filterValue === 'empty';
+        }
+        
+        return String(response) === filterValue;
+      });
+    });
+  }, [registrations, customFieldFilters]);
+
+  // Update the final registrations list to use custom field filtering
+  const finalRegistrations = searchQuery.trim() 
+    ? filteredByCustomFields.filter((reg) => {
+        const query = searchQuery.toLowerCase();
+        const camperCode = reg.camper_code?.toLowerCase() || "";
+        const fullName = `${reg.surname || ""} ${reg.middle_name || ""} ${reg.last_name || ""}`.toLowerCase();
+        const email = reg.email?.toLowerCase() || "";
+        const phone = reg.phone_number?.toLowerCase() || "";
+        return camperCode.includes(query) || fullName.includes(query) || email.includes(query) || phone.includes(query);
+      })
+    : filteredByCustomFields;
+
+  // Pagination calculations
+  const totalPages = Math.ceil(finalRegistrations.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedRegistrations = finalRegistrations.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  const resetPagination = () => {
+    setCurrentPage(1);
+  };
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (value: string) => {
+    setRowsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  // Reset pagination when filters change
+  useMemo(() => {
+    resetPagination();
+  }, [churchFilter, categoryFilter, customFieldFilters, searchQuery]);
+
+  const toggleRowExpansion = (registrationId: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(registrationId)) {
+      newExpanded.delete(registrationId);
+    } else {
+      newExpanded.add(registrationId);
+    }
+    setExpandedRows(newExpanded);
+  };
+
+  const handleCustomFieldFilterChange = (fieldId: string, value: string) => {
+    setCustomFieldFilters(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
   };
 
   // Loading state
@@ -255,6 +414,33 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Custom Field Filters */}
+            {customFields.map((field) => (
+              <div key={field.id} className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">{field.field_name}:</label>
+                <Select 
+                  value={customFieldFilters[field.id] || 'all'} 
+                  onValueChange={(value) => handleCustomFieldFilterChange(field.id, value)}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder={`All ${field.field_name.toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All {field.field_name.toLowerCase()}</SelectItem>
+                    <SelectItem value="empty">No response</SelectItem>
+                    {field.options && field.options.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                    {!field.options && (
+                      <SelectItem value="has_value">Has response</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
 
             {hasActiveFilters && (
               <Button
@@ -404,6 +590,33 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
             </Select>
           </div>
 
+          {/* Custom Field Filters */}
+          {customFields.map((field) => (
+            <div key={field.id} className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">{field.field_name}:</label>
+              <Select 
+                value={customFieldFilters[field.id] || 'all'} 
+                onValueChange={(value) => handleCustomFieldFilterChange(field.id, value)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder={`All ${field.field_name.toLowerCase()}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All {field.field_name.toLowerCase()}</SelectItem>
+                  <SelectItem value="empty">No response</SelectItem>
+                  {field.options && field.options.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                  {!field.options && (
+                    <SelectItem value="has_value">Has response</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -422,14 +635,15 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
             {searchQuery.trim() && (
               <span>Search: "{searchQuery}" • </span>
             )}
-            Showing {registrations.length} registration(s) 
-            {(churchFilter !== 'all' || categoryFilter !== 'all') && ' with active filters'}
+            Showing {finalRegistrations.length} registration(s) 
+            {(churchFilter !== 'all' || categoryFilter !== 'all' || Object.keys(customFieldFilters).length > 0) && ' with active filters'}
           </div>
         )}
       </div>
 
+
       {/* Empty state */}
-      {registrations.length === 0 && (
+      {finalRegistrations.length === 0 && (
         <div className="text-center py-12">
           <UserCheck className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-medium mb-2">
@@ -454,8 +668,43 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
         </div>
       )}
 
+      {/* View Options */}
+      {finalRegistrations.length > 0 && (
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAllDetails(!showAllDetails)}
+            >
+              {showAllDetails ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {showAllDetails ? 'Hide Details' : 'Show All Details'}
+            </Button>
+            
+            {showAllDetails && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpandedRows(new Set(finalRegistrations.map(r => r.id)))}
+                >
+                  Expand All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpandedRows(new Set())}
+                >
+                  Collapse All
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Table and related UI - Only show when there are registrations */}
-      {registrations.length > 0 && (
+      {finalRegistrations.length > 0 && (
         <>
           {/* Bulk Actions */}
           {someSelected && (
@@ -496,10 +745,13 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
+                  {showAllDetails && <TableHead className="w-[30px]"></TableHead>}
                   <TableHead>Camper Code</TableHead>
                   <TableHead>Participant</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Emergency Contact</TableHead>
+                  {showAllDetails && <TableHead>Church</TableHead>}
+                  {showAllDetails && <TableHead>Category</TableHead>}
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Check-in</TableHead>
@@ -508,146 +760,307 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {registrations.map((registration) => (
-                  <TableRow key={registration.id} id={`registration-${registration.id}`}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedRegistrations.includes(registration.id)}
-                        onCheckedChange={(checked) => 
-                          handleSelectRegistration(registration.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>{registration.camper_code}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium">
-                          {registration.surname} {registration.middle_name} {registration.last_name}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Age: {registration.age}
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        {registration.email && (
-                          <div className="flex items-center space-x-1 text-sm">
-                            <Mail className="h-3 w-3" />
-                            <span>{registration.email}</span>
+                {paginatedRegistrations.map((registration) => {
+                  const isExpanded = expandedRows.has(registration.id);
+                  const church = churches.find(c => c.id === registration.church_id);
+                  const category = categories.find(c => c.id === registration.category_id);
+                  
+                  return (
+                    <>
+                      <TableRow key={registration.id} id={`registration-${registration.id}`}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedRegistrations.includes(registration.id)}
+                            onCheckedChange={(checked) => 
+                              handleSelectRegistration(registration.id, checked as boolean)
+                            }
+                          />
+                        </TableCell>
+                        
+                        {showAllDetails && (
+                          <TableCell>
+                            {Object.keys(registration.custom_field_responses).length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleRowExpansion(registration.id)}
+                                className="p-0 h-6 w-6"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
+                        
+                        <TableCell>{registration.camper_code}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {registration.surname} {registration.middle_name} {registration.last_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Age: {registration.age}
+                            </div>
                           </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="space-y-1">
+                            {registration.email && (
+                              <div className="flex items-center space-x-1 text-sm">
+                                <Mail className="h-3 w-3" />
+                                <span>{registration.email}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center space-x-1 text-sm">
+                              <Phone className="h-3 w-3" />
+                              <span>{registration.phone_number}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium">
+                              {registration.emergency_contact_name}
+                            </div>
+                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              <span>{registration.emergency_contact_phone}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        
+                        {showAllDetails && (
+                          <TableCell>
+                            <div className="text-sm">
+                              {church?.name || 'N/A'}
+                            </div>
+                          </TableCell>
                         )}
-                        <div className="flex items-center space-x-1 text-sm">
-                          <Phone className="h-3 w-3" />
-                          <span>{registration.phone_number}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">
-                          {registration.emergency_contact_name}
-                        </div>
-                        <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          <span>{registration.emergency_contact_phone}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="font-medium">
-                        {formatCurrency(registration.total_amount)}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={updatePaymentMutation.isPending}
-                      >
-                        {registration.has_paid ? (
-                          <Badge variant="default" className="cursor-pointer">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Paid
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="cursor-pointer">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Unpaid
-                          </Badge>
+                        
+                        {showAllDetails && (
+                          <TableCell>
+                            <div className="text-sm">
+                              {category?.name || 'N/A'}
+                            </div>
+                          </TableCell>
                         )}
-                      </Button>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCheckinToggle(registration)}
-                        disabled={updateCheckinMutation.isPending}
-                      >
-                        {registration.has_checked_in ? (
-                          <Badge variant="default" className="cursor-pointer">
-                            <UserCheck className="h-3 w-3 mr-1" />
-                            Checked In
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="cursor-pointer">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Not Checked In
-                          </Badge>
-                        )}
-                      </Button>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="text-sm">
-                        {format(new Date(registration.registration_date), 'MMM dd, yyyy')}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
+                        
+                        <TableCell>
+                          <div className="font-medium">
+                            {formatCurrency(registration.total_amount)}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={updatePaymentMutation.isPending}
+                          >
+                            {registration.has_paid ? (
+                              <Badge variant="default" className="cursor-pointer">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Paid
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="cursor-pointer">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Unpaid
+                              </Badge>
+                            )}
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() => onEditRegistration?.(registration)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleCheckinToggle(registration)}
+                            disabled={updateCheckinMutation.isPending}
                           >
-                            <UserCheck className="mr-2 h-4 w-4" />
-                            Toggle Check-in
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeleteClick(registration)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Cancel Registration
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            {registration.has_checked_in ? (
+                              <Badge variant="default" className="cursor-pointer">
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Checked In
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="cursor-pointer">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Not Checked In
+                              </Badge>
+                            )}
+                          </Button>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="text-sm">
+                            {format(new Date(registration.registration_date), 'MMM dd, yyyy')}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => onEditRegistration?.(registration)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleCheckinToggle(registration)}
+                              >
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                Toggle Check-in
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteClick(registration)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Cancel Registration
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                      
+                      {/* Expanded row for custom field details */}
+                      {showAllDetails && isExpanded && Object.keys(registration.custom_field_responses).length > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={showAllDetails ? 12 : 10} className="bg-muted/20">
+                            <div className="p-4">
+                              <h4 className="font-medium mb-3">Custom Field Responses</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {Object.entries(registration.custom_field_responses).map(([fieldId, value]) => {
+                                  const field = customFields.find(f => f.id === fieldId);
+                                  if (!field) return null;
+                                  
+                                  return (
+                                    <div key={fieldId} className="space-y-1">
+                                      <div className="text-sm font-medium text-muted-foreground">
+                                        {field.field_name}
+                                      </div>
+                                      <div className="text-sm">
+                                        {formatCustomFieldResponse(field, value)}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page:</span>
+                <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, finalRegistrations.length)} of {finalRegistrations.length} entries
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="w-8"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

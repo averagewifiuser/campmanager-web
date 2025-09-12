@@ -37,11 +37,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { registrationsApi } from '@/lib/api';
 import { RegistrationEditForm } from '@/components/forms/RegistrationEditForm';
+import { useAuth } from '@/lib/auth-context';
+import { canAccessRegistrations } from '@/lib/permissions.tsx';
 import type { Registration } from '@/lib/types';
 
 export const CampDetailPage: React.FC = () => {
   const { campId } = useParams<{ campId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Filter states
   // @ts-ignore
@@ -195,6 +198,10 @@ export const CampDetailPage: React.FC = () => {
 
   const status = getCampStatus();
   const capacityUsed = Math.round((registrations.length / camp.capacity) * 100);
+
+  // Permission checks
+  const hasRegistrationsAccess = canAccessRegistrations(user);
+  const isCampManager = user?.role === 'camp_manager';
 
   return (
     <div className="min-h-screen bg-background">
@@ -367,18 +374,21 @@ export const CampDetailPage: React.FC = () => {
           )}
 
           {/* Content Tabs */}
-          <Tabs defaultValue="registrations" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="registrations">
-                Registrations ({filteredRegistrations.length})
-              </TabsTrigger>
-              <TabsTrigger value="analytics">
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger value="settings">
-                Settings
-              </TabsTrigger>
-            </TabsList>
+          {hasRegistrationsAccess ? (
+            <Tabs defaultValue="registrations" className="space-y-4">
+              <TabsList className={`grid w-full ${isCampManager ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                <TabsTrigger value="registrations">
+                  Registrations ({filteredRegistrations.length})
+                </TabsTrigger>
+                <TabsTrigger value="analytics">
+                  Analytics
+                </TabsTrigger>
+                {isCampManager && (
+                  <TabsTrigger value="settings">
+                    Settings
+                  </TabsTrigger>
+                )}
+              </TabsList>
 
             {/* Registrations Tab */}
             <TabsContent value="registrations" className="space-y-4">
@@ -603,7 +613,28 @@ export const CampDetailPage: React.FC = () => {
                 </Card>
               </div>
             </TabsContent>
-          </Tabs>
+            </Tabs>
+          ) : (
+            /* Fallback for users without registrations access */
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <div className="space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                    <Users className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Access Restricted</h3>
+                    <p className="text-muted-foreground">
+                      You don't have permission to view registrations for this camp.
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Contact your camp manager if you need access to registration data.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
