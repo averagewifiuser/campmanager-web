@@ -102,7 +102,6 @@ const FoodTable: React.FC<FoodTableProps> = ({
             <TableHead>Quantity</TableHead>
             <TableHead>Vendor</TableHead>
             <TableHead>Date & Time</TableHead>
-            <TableHead>Created</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -137,11 +136,6 @@ const FoodTable: React.FC<FoodTableProps> = ({
                   <span className="text-sm">
                     {formatDate(food.date)}
                   </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="text-sm text-gray-500">
-                  {formatDate(food.created_at)}
                 </div>
               </TableCell>
               <TableCell className="text-right">

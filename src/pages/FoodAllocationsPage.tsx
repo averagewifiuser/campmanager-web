@@ -19,8 +19,8 @@ interface Food {
 }
 
 interface CamperQRData {
-  camper_id: string;
-  camper_code: string;
+  camperId: string;
+  camperCode: string;
   type: 'camper_identification';
 }
 
@@ -76,12 +76,12 @@ const FoodAllocationsPage: React.FC = () => {
     try {
       const camperData: CamperQRData = JSON.parse(data);
       
-      if (camperData.type === 'camper_identification') {
+      if (camperData.type === 'camper_identification' && camperData.camperId) {
         allocateFood(camperData);
       } else {
         toast({
           title: "Invalid QR Code",
-          description: "This QR code is not for camper identification",
+          description: "This QR code is not for camper identification or missing camper ID",
           variant: "destructive",
         });
       }
@@ -111,17 +111,20 @@ const FoodAllocationsPage: React.FC = () => {
       await api.post(`/camps/${campId}/food-allocations`, {
         data: {
           food_id: selectedFood.id,
-          registration_id: camperData.camper_id,
+          registration_id: camperData.camperId, // Use camperId from QR code
         }
       });
 
-      setScannedCampers(prev => [...prev, camperData.camper_code]);
+      setScannedCampers(prev => [...prev, camperData.camperCode]);
       
       toast({
         title: "Success",
-        description: `Food allocated to camper ${camperData.camper_code}`,
+        description: `Food allocated to camper ${camperData.camperCode}`,
         variant: "default",
       });
+
+      // Refresh food quantities after successful allocation
+      await fetchTodaysFoods();
 
       // Auto-switch back to meal selection after successful allocation
       setTimeout(() => {
@@ -132,7 +135,7 @@ const FoodAllocationsPage: React.FC = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to allocate food",
+        description: "Failed to allocate food. Please try again.",
         variant: "destructive",
       });
     }
@@ -141,8 +144,8 @@ const FoodAllocationsPage: React.FC = () => {
   // Simulate QR code scanning (fallback for testing)
   const simulateQRScan = () => {
     const mockCamperData: CamperQRData = {
-      camper_id: `camper_${Date.now()}`,
-      camper_code: `C${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+      camperId: `camper_${Date.now()}`,
+      camperCode: `C${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       type: 'camper_identification'
     };
     

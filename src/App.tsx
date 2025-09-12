@@ -31,6 +31,7 @@ import RoomsPage from './pages/RoomsPage';
 import RoomAllocationsPage from './pages/RoomAllocationsPage';
 import FoodPage from './pages/FoodPage';
 import FoodAllocationsPage from './pages/FoodAllocationsPage';
+import { CamperQRCodePage } from './pages/CamperQRCodePage';
 import { Toaster } from './components/ui/toaster';
 
 // Create a query client
@@ -192,6 +193,12 @@ function AppRoutes() {
       <Route
         path="/camper-edit/:registrationId"
         element={<CamperEditPage />}
+      />
+
+      {/* Camper QR Code page - no auth required */}
+      <Route
+        path="/:camperId/qr-code"
+        element={<CamperQRCodePage />}
       />
 
       {/* Protected routes */}

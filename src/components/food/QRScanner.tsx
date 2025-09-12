@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
+import jsQR from 'jsqr';
 
 interface QRScannerProps {
   onScan: (data: string) => void;
@@ -78,24 +79,25 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, isActive }) => {
           //@ts-ignore
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           
-          // Simple QR code detection simulation
-          // In a real implementation, you would use a library like jsQR
-          // For now, we'll simulate QR detection by looking for specific patterns
-          const mockQRDetection = () => {
-            // This is a mock - in reality you'd use jsQR or similar
-            // For demo purposes, we'll randomly "detect" a QR code
-            if (Math.random() > 0.95) { // 5% chance per scan
-              const mockData = JSON.stringify({
-                camper_id: `camper_${Date.now()}`,
-                camper_code: `C${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-                type: 'camper_identification'
+          // Use jsQR to detect QR codes
+          const detectQRCode = () => {
+            try {
+              const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
               });
-              onScan(mockData);
-              stopCamera();
+              
+              if (code) {
+                // Successfully detected a QR code
+                onScan(code.data);
+                stopCamera();
+              }
+            } catch (error) {
+              // Silent error handling - QR detection can fail frequently
+              console.debug('QR detection error:', error);
             }
           };
           
-          mockQRDetection();
+          detectQRCode();
         }
       }
     }, 100); // Scan every 100ms

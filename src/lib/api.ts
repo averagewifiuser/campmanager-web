@@ -586,6 +586,13 @@ export const foodAllocationsApi = {
   },
 };
 
+// Camper QR Code API - using existing registration endpoint
+export const camperApi = {
+  getCamperQRData: async (registrationId: string): Promise<Registration> => {
+    return registrationsApi.getRegistration(registrationId);
+  },
+};
+
 // Error handler utility
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
