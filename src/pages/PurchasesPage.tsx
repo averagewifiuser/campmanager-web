@@ -131,7 +131,7 @@ const PurchasesPage = () => {
       
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-2 sm:px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Purchases Management</h1>
@@ -140,7 +140,7 @@ const PurchasesPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Filter by Sold By:</span>
                 <Select value={soldByFilter} onValueChange={setSoldByFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -163,7 +163,7 @@ const PurchasesPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-2 sm:px-4 py-6">
         <div className="space-y-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -248,7 +248,7 @@ const PurchasesPage = () => {
 
       {/* Side Navigation */}
       {sideNavOpen && (
-        <div className="fixed right-0 top-0 h-full w-1/2 bg-white border-l shadow-lg z-50">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-3/4 md:w-1/2 bg-white border-l shadow-lg z-50">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-xl font-semibold">New Purchase</h2>
             <Button

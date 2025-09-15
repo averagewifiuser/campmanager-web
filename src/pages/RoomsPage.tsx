@@ -162,7 +162,7 @@ const RoomsPage = () => {
       
       {/* Header */}
       <header className="border-b bg-white sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-2 sm:px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Rooms Management</h1>
@@ -171,7 +171,7 @@ const RoomsPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Gender:</span>
                 <Select value={genderFilter} onValueChange={setGenderFilter}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full sm:w-[120px]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -185,7 +185,7 @@ const RoomsPage = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Status:</span>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full sm:w-[120px]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -206,7 +206,7 @@ const RoomsPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-2 sm:px-4 py-6">
         <div className="space-y-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -291,7 +291,7 @@ const RoomsPage = () => {
 
       {/* Side Navigation */}
       {sideNavOpen && (
-        <div className="fixed right-0 top-0 h-full w-1/2 bg-white border-l shadow-lg z-50">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-3/4 md:w-1/2 bg-white border-l shadow-lg z-50">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-xl font-semibold">
               {editingRoom ? "Edit Room" : "New Room"}
