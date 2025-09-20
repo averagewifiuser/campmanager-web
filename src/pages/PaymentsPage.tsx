@@ -526,7 +526,7 @@ const PaymentsPage = () => {
 
       {/* Side Navigation */}
       {sideNavOpen && (
-        <div className="fixed right-0 top-0 h-full w-1/2 bg-white border-l shadow-lg z-50">
+        <div className="fixed right-0 top-0 h-full w-full sm:w-3/4 md:w-1/2 bg-white border-l shadow-lg z-50">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-xl font-semibold">New Payment</h2>
             <Button
