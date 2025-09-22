@@ -18,6 +18,8 @@ const PledgesPage = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [registrationsLoaded, setRegistrationsLoaded] = useState<boolean>(false);
+  const [registrationsFetching, setRegistrationsFetching] = useState<boolean>(false);
 
   // Calculate pledge statistics
   const pledgeStats = {
@@ -48,16 +50,29 @@ const PledgesPage = () => {
   useEffect(() => {
     if (!campId) return;
     setLoading(true);
-    Promise.all([
-      pledgesApi.getCampPledges(campId),
-      registrationsApi.getCampRegistrations(campId)
-    ])
-      .then(([pledgesData, registrationsData]) => {
+    // Reset registrations and lazy-load them only when the side panel opens
+    setRegistrations([]);
+    setRegistrationsLoaded(false);
+    pledgesApi.getCampPledges(campId)
+      .then((pledgesData) => {
         setPledges(pledgesData || []);
-        setRegistrations(registrationsData || []);
       })
       .finally(() => setLoading(false));
   }, [campId]);
+
+  // Lazy-load registrations only when needed (when side panel opens)
+  useEffect(() => {
+    if (!campId) return;
+    if (sideNavOpen && !registrationsLoaded && !registrationsFetching) {
+      setRegistrationsFetching(true);
+      registrationsApi.getCampRegistrations(campId)
+        .then((data) => setRegistrations(data || []))
+        .finally(() => {
+          setRegistrationsLoaded(true);
+          setRegistrationsFetching(false);
+        });
+    }
+  }, [sideNavOpen, campId, registrationsLoaded, registrationsFetching]);
 
   const handlePledgeSubmit = async (formData: any) => {
     if (!campId) return;

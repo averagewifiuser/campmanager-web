@@ -295,6 +295,8 @@ const PaymentsPage = () => {
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [recordedByFilter, setRecordedByFilter] = useState<string>('all');
+  const [registrationsLoaded, setRegistrationsLoaded] = useState<boolean>(false);
+  const [registrationsFetching, setRegistrationsFetching] = useState<boolean>(false);
 
   // Filter payments based on "Recorded By" filter
   const filteredPayments = payments.filter(payment => {
@@ -333,16 +335,29 @@ const PaymentsPage = () => {
   useEffect(() => {
     if (!campId) return;
     setLoading(true);
-    Promise.all([
-      paymentsApi.getCampPayments(campId),
-      registrationsApi.getCampRegistrations(campId)
-    ])
-      .then(([paymentsData, registrationsData]) => {
+    // Reset registrations and lazy-load them only when the side panel opens
+    setRegistrations([]);
+    setRegistrationsLoaded(false);
+    paymentsApi.getCampPayments(campId)
+      .then((paymentsData) => {
         setPayments(paymentsData || []);
-        setRegistrations(registrationsData || []);
       })
       .finally(() => setLoading(false));
   }, [campId]);
+
+  // Lazy-load registrations only when needed (when side panel opens)
+  useEffect(() => {
+    if (!campId) return;
+    if (sideNavOpen && !registrationsLoaded && !registrationsFetching) {
+      setRegistrationsFetching(true);
+      registrationsApi.getCampRegistrations(campId)
+        .then((data) => setRegistrations(data || []))
+        .finally(() => {
+          setRegistrationsLoaded(true);
+          setRegistrationsFetching(false);
+        });
+    }
+  }, [sideNavOpen, campId, registrationsLoaded, registrationsFetching]);
 
   const handlePaymentSubmit = async (formData: any) => {
     if (!campId) return;

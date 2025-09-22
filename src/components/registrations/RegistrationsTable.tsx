@@ -79,11 +79,13 @@ import type { Registration, CustomField } from '@/lib/types';
 interface RegistrationsTableProps {
   campId: string;
   onEditRegistration?: (registration: Registration) => void;
+  enabled?: boolean;
 }
 
 export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({ 
   campId,
-  onEditRegistration 
+  onEditRegistration,
+  enabled = true
 }) => {
   const [selectedRegistrations, setSelectedRegistrations] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,7 +98,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
   
   // View state
   const [showAllDetails, setShowAllDetails] = useState<boolean>(false);
@@ -110,19 +111,8 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const { data: allRegistrations = [], isLoading } = useCampRegistrations(campId, {
     church_id: churchFilter !== 'all' ? churchFilter : undefined,
     category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
-  });
+  }, { enabled });
   
-  // Filter registrations based on search query
-  const filteredRegistrations = searchQuery.trim() 
-    ? allRegistrations.filter((reg) => {
-        const query = searchQuery.toLowerCase();
-        const camperCode = reg.camper_code?.toLowerCase() || "";
-        const fullName = `${reg.surname || ""} ${reg.middle_name || ""} ${reg.last_name || ""}`.toLowerCase();
-        const email = reg.email?.toLowerCase() || "";
-        const phone = reg.phone_number?.toLowerCase() || "";
-        return camperCode.includes(query) || fullName.includes(query) || email.includes(query) || phone.includes(query);
-      })
-    : [];
     
   const registrations = allRegistrations;
   
@@ -220,7 +210,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     setCategoryFilter('all');
     setCustomFieldFilters({});
     setSearchQuery('');
-    setShowSearchResults(false);
   };
 
   const hasActiveFilters = churchFilter !== 'all' || categoryFilter !== 'all' || 
@@ -229,7 +218,6 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    setShowSearchResults(value.trim().length > 0);
   };
 
   const getRegistrationDisplayName = (reg: Registration) => {
@@ -333,9 +321,11 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     : filteredByCustomFields;
 
   // Pagination calculations
-  const totalPages = Math.ceil(finalRegistrations.length / rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(finalRegistrations.length / rowsPerPage));
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
+  const displayStart = finalRegistrations.length === 0 ? 0 : startIndex + 1;
+  const displayEnd = finalRegistrations.length === 0 ? 0 : Math.min(endIndex, finalRegistrations.length);
   const paginatedRegistrations = finalRegistrations.slice(startIndex, endIndex);
 
   // Reset to first page when filters change
@@ -489,70 +479,9 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
               onChange={handleSearchInputChange}
               placeholder="Search by camper code, name, email, or phone..."
               className="pl-10"
-              onFocus={() => setShowSearchResults(searchQuery.trim().length > 0)}
-              onBlur={() => {
-                // Delay hiding results to allow for clicks
-                setTimeout(() => setShowSearchResults(false), 200);
-              }}
             />
           </div>
           
-          {showSearchResults && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {filteredRegistrations.length === 0 ? (
-                <div className="px-3 py-2 text-gray-500 text-sm">
-                  No registrations found matching "{searchQuery}"
-                </div>
-              ) : (
-                <>
-                  <div className="px-3 py-2 text-xs text-gray-500 border-b bg-gray-50">
-                    {filteredRegistrations.length} registration(s) found
-                  </div>
-                  {filteredRegistrations.slice(0, 10).map((reg) => (
-                    <div
-                      key={reg.id}
-                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b last:border-b-0"
-                      onClick={() => {
-                        // Scroll to the registration in the table if it's visible
-                        const element = document.getElementById(`registration-${reg.id}`);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          element.classList.add('bg-yellow-100');
-                          setTimeout(() => element.classList.remove('bg-yellow-100'), 2000);
-                        }
-                        setSearchQuery('');
-                        setShowSearchResults(false);
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{getRegistrationDisplayName(reg)}</div>
-                          <div className="text-sm text-gray-500 flex items-center gap-4">
-                            <span>Code: {reg.camper_code}</span>
-                            {reg.email && <span>Email: {reg.email}</span>}
-                            <span>Phone: {reg.phone_number}</span>
-                          </div>
-                          <div className="text-xs text-gray-400 flex items-center gap-2">
-                            <Badge variant={reg.has_paid ? "default" : "destructive"} className="text-xs">
-                              {reg.has_paid ? "Paid" : "Unpaid"}
-                            </Badge>
-                            <Badge variant={reg.has_checked_in ? "default" : "secondary"} className="text-xs">
-                              {reg.has_checked_in ? "Checked In" : "Not Checked In"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {filteredRegistrations.length > 10 && (
-                    <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50">
-                      Showing first 10 results. Refine your search to see more specific results.
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Filters */}
@@ -981,7 +910,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
               </div>
 
               {/* Pagination Controls */}
-              {totalPages > 1 && (
+              {true && (
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Rows per page:</span>
@@ -1001,7 +930,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
 
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
-                      Showing {startIndex + 1} to {Math.min(endIndex, finalRegistrations.length)} of {finalRegistrations.length} entries
+                      Showing {displayStart} to {displayEnd} of {finalRegistrations.length} entries
                     </span>
                   </div>
 

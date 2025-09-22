@@ -30,7 +30,7 @@ import {
 // } from '@/components/ui/select';
 import { RegistrationsTable } from '@/components/registrations/RegistrationsTable';
 import { useCamp } from '@/hooks/useCamps';
-import { useCampRegistrations, useCampStats } from '@/hooks/useRegistrations';
+import { useCampStats } from '@/hooks/useRegistrations';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -46,28 +46,17 @@ export const CampDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Filter states
-  // @ts-ignore
-  const [searchTerm, setSearchTerm] = useState('');
-  // @ts-ignore
-  const [paymentFilter, setPaymentFilter] = useState<string>('all');
-  // @ts-ignore
-  const [checkinFilter, setCheckinFilter] = useState<string>('all');
 
-  // Pagination state (must be before any conditional returns!)
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Data fetching
   const { data: camp, isLoading: campLoading, error: campError } = useCamp(campId!);
-  // @ts-ignore
-  const { data: registrations = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useCampRegistrations(campId!);
   const { data: stats, isLoading: statsLoading } = useCampStats(campId!);
 
   // Edit registration dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'registrations' | 'analytics' | 'settings'>('registrations');
 
   const handleEditRegistration = (registration: Registration) => {
     setEditingRegistration(registration);
@@ -87,7 +76,6 @@ export const CampDetailPage: React.FC = () => {
       toast({ title: 'Registration updated', description: 'The registration was updated successfully.' });
       setEditDialogOpen(false);
       setEditingRegistration(null);
-      await refetchRegistrations();
     } catch (error: any) {
       toast({ title: 'Update failed', description: error?.message || 'Failed to update registration', variant: 'destructive' });
     } finally {
@@ -157,47 +145,13 @@ export const CampDetailPage: React.FC = () => {
     return { label: 'Open for Registration', variant: 'default' as const };
   };
 
-  // Filter registrations
-  const filteredRegistrations = registrations.filter((registration: Registration) => {
-    const fullName = `${registration.surname} ${registration.middle_name} ${registration.last_name}`.toLowerCase();
-    const email = registration.email?.toLowerCase() || '';
-    const phone = registration.phone_number;
-    
-    const matchesSearch = searchTerm === '' || 
-      fullName.includes(searchTerm.toLowerCase()) ||
-      email.includes(searchTerm.toLowerCase()) ||
-      phone.includes(searchTerm);
-    
-    const matchesPayment = paymentFilter === 'all' ||
-      (paymentFilter === 'paid' && registration.has_paid) ||
-      (paymentFilter === 'unpaid' && !registration.has_paid);
-    
-    const matchesCheckin = checkinFilter === 'all' ||
-      (checkinFilter === 'checked-in' && registration.has_checked_in) ||
-      (checkinFilter === 'not-checked-in' && !registration.has_checked_in);
-    
-    return matchesSearch && matchesPayment && matchesCheckin;
-  });
 
-  // Pagination logic
-  const totalPages = Math.max(1, Math.ceil(filteredRegistrations.length / rowsPerPage));
-  // @ts-ignore
-  const paginatedRegistrations = filteredRegistrations.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
 
-  const handleRowsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRowsPerPage(Number(e.target.value));
-    setPage(1);
-  };
 
   const status = getCampStatus();
-  const capacityUsed = Math.round((registrations.length / camp.capacity) * 100);
+  const totalRegs = stats?.total_registrations ?? 0;
+  const capacityUsed = Math.round((totalRegs / camp.capacity) * 100);
 
   // Permission checks
   const hasRegistrationsAccess = canAccessRegistrations(user);
@@ -287,7 +241,7 @@ export const CampDetailPage: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-lg font-bold">
-                  {registrations.length} / {camp.capacity}
+                  {totalRegs} / {camp.capacity}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {capacityUsed}% full
@@ -375,10 +329,10 @@ export const CampDetailPage: React.FC = () => {
 
           {/* Content Tabs */}
           {hasRegistrationsAccess ? (
-            <Tabs defaultValue="registrations" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
               <TabsList className={`grid w-full ${isCampManager ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <TabsTrigger value="registrations">
-                  Registrations ({filteredRegistrations.length})
+                  Registrations ({totalRegs})
                 </TabsTrigger>
                 <TabsTrigger value="analytics">
                   Analytics
@@ -441,6 +395,7 @@ export const CampDetailPage: React.FC = () => {
                   <RegistrationsTable 
                     campId={campId}
                     onEditRegistration={handleEditRegistration}
+                    enabled={activeTab === 'registrations'}
                   />
                   {/* Edit Registration Dialog */}
                   <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -458,42 +413,6 @@ export const CampDetailPage: React.FC = () => {
                       )}
                     </DialogContent>
                   </Dialog>
-                  {/* Pagination Controls */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t bg-muted">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Rows per page:</span>
-                      <select
-                        className="border rounded px-2 py-1 text-sm"
-                        value={rowsPerPage}
-                        onChange={handleRowsPerPageChange}
-                      >
-                        {[5, 10, 20, 50, 100].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(page - 1)}
-                        disabled={page === 1}
-                      >
-                        Prev
-                      </Button>
-                      <span className="text-sm">
-                        Page {page} of {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(page + 1)}
-                        disabled={page === totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

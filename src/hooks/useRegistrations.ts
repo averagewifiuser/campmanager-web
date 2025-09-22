@@ -20,7 +20,8 @@ export const registrationKeys = {
  */
 export const useCampRegistrations = (
   campId: string,
-  filters?: { church_id?: string; category_id?: string }
+  filters?: { church_id?: string; category_id?: string },
+  options?: { enabled?: boolean }
 ) => {
   return useQuery({
     queryKey: [
@@ -30,7 +31,7 @@ export const useCampRegistrations = (
       filters?.category_id || 'all'
     ],
     queryFn: () => registrationsApi.getCampRegistrations(campId, filters),
-    enabled: !!campId,
+    enabled: !!campId && (options?.enabled ?? true),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 };

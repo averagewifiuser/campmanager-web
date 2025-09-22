@@ -20,6 +20,8 @@ const RoomAllocationsPage = () => {
   const [editingAllocation, setEditingAllocation] = useState<any>(null);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [registrationsLoaded, setRegistrationsLoaded] = useState<boolean>(false);
+  const [registrationsFetching, setRegistrationsFetching] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [genderFilter, setGenderFilter] = useState<string>('all');
 
@@ -53,16 +55,17 @@ const RoomAllocationsPage = () => {
   useEffect(() => {
     if (!campId) return;
     setLoading(true);
+    // Reset registrations and lazy-load them only when the side panel opens
+    setRegistrations([]);
+    setRegistrationsLoaded(false);
     
     Promise.all([
       roomAllocationsApi.getCampRoomAllocations(campId),
-      roomsApi.getCampRooms(campId),
-      registrationsApi.getCampRegistrations(campId)
+      roomsApi.getCampRooms(campId)
     ])
-      .then(([allocationsData, roomsData, registrationsData]) => {
+      .then(([allocationsData, roomsData]) => {
         setAllocations(allocationsData || []);
         setRooms(roomsData || []);
-        setRegistrations(registrationsData || []);
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -74,6 +77,20 @@ const RoomAllocationsPage = () => {
       })
       .finally(() => setLoading(false));
   }, [campId, toast]);
+
+  // Lazy-load registrations only when needed (when side panel opens)
+  useEffect(() => {
+    if (!campId) return;
+    if (sideNavOpen && !registrationsLoaded && !registrationsFetching) {
+      setRegistrationsFetching(true);
+      registrationsApi.getCampRegistrations(campId)
+        .then((data) => setRegistrations(data || []))
+        .finally(() => {
+          setRegistrationsLoaded(true);
+          setRegistrationsFetching(false);
+        });
+    }
+  }, [sideNavOpen, campId, registrationsLoaded, registrationsFetching]);
 
   const handleAllocationSubmit = async (formData: any) => {
     if (!campId) return;
