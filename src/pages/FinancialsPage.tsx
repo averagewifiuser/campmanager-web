@@ -18,15 +18,15 @@ const FinancialsPage = () => {
   const [sideNavOpen, setSideNavOpen] = useState<boolean>(false);
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [receivedByFilter, setReceivedByFilter] = useState<string>('all');
+  const [recordedByFilter, setRecordedByFilter] = useState<string>('all');
 
-  // Filter financials based on "Received By" filter
+  // Filter financials based on "Recorded By" filter
   const filteredFinancials = financials.filter(financial => {
-    return receivedByFilter === 'all' || financial.received_by === receivedByFilter;
+    return recordedByFilter === 'all' || financial.recorded_by === recordedByFilter;
   });
 
-  // Get unique "Received By" values for filter dropdown
-  const uniqueReceivedBy = [...new Set(financials.map(f => f.received_by).filter(Boolean))];
+  // Get unique "Recorded By" values for filter dropdown
+  const uniqueRecordedBy = [...new Set(financials.map(f => f.recorded_by).filter(Boolean))];
 
   // Calculate financial statistics based on filtered data
   const financialStats = {
@@ -141,14 +141,14 @@ const FinancialsPage = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Filter by Received By:</span>
-                <Select value={receivedByFilter} onValueChange={setReceivedByFilter}>
+                <span className="text-sm font-medium">Filter by Recorded By:</span>
+                <Select value={recordedByFilter} onValueChange={setRecordedByFilter}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    {uniqueReceivedBy.map((person) => (
+                    {uniqueRecordedBy.map((person) => (
                       <SelectItem key={person} value={person}>
                         {person}
                       </SelectItem>

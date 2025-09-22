@@ -23,6 +23,7 @@ type Financial = {
   description: string;
   payment_method: string;
   received_by: string;
+  recorded_by: string;
   reference_number: string;
   transaction_category: string;
   transaction_type: string;
@@ -102,7 +103,8 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       financial.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       financial.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       financial.approved_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      financial.received_by.toLowerCase().includes(searchTerm.toLowerCase());
+      financial.received_by.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      financial.recorded_by.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = typeFilter === 'all' || financial.transaction_type === typeFilter;
     const matchesCategory = categoryFilter === 'all' || financial.transaction_category === categoryFilter;
@@ -137,6 +139,7 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       "Payment Method",
       "Reference Number",
       "Received By",
+      "Recorded By",
       "Approved By"
     ];
     const csvData = filteredFinancials.map((financial) => [
@@ -148,6 +151,7 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       formatPaymentMethod(financial.payment_method),
       financial.reference_number,
       financial.received_by,
+      financial.recorded_by,
       financial.approved_by
     ]);
     const csvContent = [headers, ...csvData]
@@ -251,12 +255,13 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
                 <TableHead>Payment Method</TableHead>
                 <TableHead>Reference</TableHead>
                 <TableHead>Received By</TableHead>
+                <TableHead>Recorded By</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedFinancials.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     {searchTerm || typeFilter !== 'all' || categoryFilter !== 'all' ? 'No financials match your filters' : 'No financial records found'}
                   </TableCell>
                 </TableRow>
@@ -294,6 +299,9 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{financial.received_by}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{financial.recorded_by}</span>
                     </TableCell>
                   </TableRow>
                 ))
