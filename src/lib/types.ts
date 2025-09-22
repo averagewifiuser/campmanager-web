@@ -31,12 +31,16 @@ export interface Church {
   camp_id: string;
   area: string;
   district: string;
+  region: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateChurchRequest {
   name: string;
+  area: string;
+  district: string;
+  region?: string | null;
 }
 
 export interface Category {

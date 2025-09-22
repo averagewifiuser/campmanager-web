@@ -21,6 +21,7 @@ const churchSchema = z.object({
   name: z.string().min(3, 'Church name must be at least 3 characters'),
   area: z.string().min(2, 'Area must be at least 2 characters'),
   district: z.string().min(2, 'District must be at least 2 characters'),
+  region: z.string().max(100, 'Region must be at most 100 characters').nullable().optional(),
 });
 
 type ChurchFormData = z.infer<typeof churchSchema>;
@@ -49,6 +50,7 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
       name: church?.name || '',
       area: church?.area || '',
       district: church?.district || '',
+      region: church?.region ?? '',
     },
   });
 
@@ -61,7 +63,8 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
       const safeData = {
         name: data.name,
         area: data.area ?? '',
-        district: data.district ?? ''
+        district: data.district ?? '',
+        region: data.region && data.region.trim() !== '' ? data.region.trim() : null
       };
 
       if (church) {
@@ -128,6 +131,24 @@ export const ChurchForm: React.FC<ChurchFormProps> = ({
                 <Input
                   placeholder="e.g. Accra West"
                   {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="region"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Region (optional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. Greater Accra"
+                  {...field}
+                  value={field.value ?? ''}
                 />
               </FormControl>
               <FormMessage />

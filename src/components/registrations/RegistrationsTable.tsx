@@ -1,5 +1,5 @@
 // src/components/registrations/RegistrationsTable.tsx
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { 
   MoreHorizontal, 
@@ -64,6 +64,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { formatCurrency } from '@/lib/utils';
 import { 
   useUpdatePaymentStatus, 
@@ -95,6 +96,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const [churchFilter, setChurchFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string>>({});
+  const [regionFilter, setRegionFilter] = useState<string>('all');
   
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -102,6 +104,19 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   // View state
   const [showAllDetails, setShowAllDetails] = useState<boolean>(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // Groupings row expansion state (fieldId::option)
+  const [expandedGroupRows, setExpandedGroupRows] = useState<Set<string>>(new Set());
+
+  const toggleGroupRow = (fieldId: string, option: string) => {
+    const key = `${fieldId}::${option}`;
+    setExpandedGroupRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -120,6 +135,15 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const { data: churches = [] } = useChurches(campId);
   const { data: categories = [] } = useCategories(campId);
   const { data: customFields = [] } = useCustomFields(campId);
+  const regionOptions = useMemo(() => {
+    const set = new Set<string>();
+    churches.forEach((c) => {
+      if (c.region && c.region.trim() !== '') {
+        set.add(c.region.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [churches]);
   
   const updatePaymentMutation = useUpdatePaymentStatus();
   const updateCheckinMutation = useUpdateCheckinStatus();
@@ -208,11 +232,12 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const clearFilters = () => {
     setChurchFilter('all');
     setCategoryFilter('all');
+    setRegionFilter('all');
     setCustomFieldFilters({});
     setSearchQuery('');
   };
 
-  const hasActiveFilters = churchFilter !== 'all' || categoryFilter !== 'all' || 
+  const hasActiveFilters = churchFilter !== 'all' || categoryFilter !== 'all' || regionFilter !== 'all' ||
     Object.keys(customFieldFilters).length > 0 || searchQuery.trim() !== '';
   
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -255,6 +280,19 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     return String(value);
   };
 
+  // Group registrations by region
+  const groupedByRegion = useMemo(() => {
+    const grouped: Record<string, Registration[]> = {};
+    registrations.forEach((reg) => {
+      const church = churches.find((c) => c.id === reg.church_id);
+      const region = (church?.region?.trim() || '');
+      const key = region === '' ? 'No region' : region;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(reg);
+    });
+    return grouped;
+  }, [registrations, churches]);
+
   // Group custom field responses by field with options
   //@ts-ignore
   const groupedCustomFieldResponses = useMemo(() => {
@@ -290,11 +328,24 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     return grouped;
   }, [customFields, registrations]);
 
+  // Filter registrations by church region
+  const filteredByRegion = useMemo(() => {
+    if (regionFilter === 'all') return registrations;
+    return registrations.filter((reg) => {
+      const church = churches.find((c) => c.id === reg.church_id);
+      const value = (church?.region || '').trim();
+      if (regionFilter === 'empty') {
+        return value === '';
+      }
+      return value.toLowerCase() === regionFilter.toLowerCase();
+    });
+  }, [registrations, churches, regionFilter]);
+
   // Filter registrations by custom fields
   const filteredByCustomFields = useMemo(() => {
-    if (Object.keys(customFieldFilters).length === 0) return registrations;
+    if (Object.keys(customFieldFilters).length === 0) return filteredByRegion;
     
-    return registrations.filter(reg => {
+    return filteredByRegion.filter(reg => {
       return Object.entries(customFieldFilters).every(([fieldId, filterValue]) => {
         if (filterValue === 'all') return true;
         
@@ -306,7 +357,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
         return String(response) === filterValue;
       });
     });
-  }, [registrations, customFieldFilters]);
+  }, [filteredByRegion, customFieldFilters]);
 
   // Update the final registrations list to use custom field filtering
   const finalRegistrations = searchQuery.trim() 
@@ -346,7 +397,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   // Reset pagination when filters change
   useMemo(() => {
     resetPagination();
-  }, [churchFilter, categoryFilter, customFieldFilters, searchQuery]);
+  }, [churchFilter, categoryFilter, regionFilter, customFieldFilters, searchQuery]);
 
   const toggleRowExpansion = (registrationId: string) => {
     const newExpanded = new Set(expandedRows);
@@ -405,6 +456,24 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">Region:</label>
+              <Select value={regionFilter} onValueChange={setRegionFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All regions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All regions</SelectItem>
+                  <SelectItem value="empty">No region</SelectItem>
+                  {regionOptions.map((region) => (
+                    <SelectItem key={region} value={region}>
+                      {region}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -525,6 +594,24 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
             </Select>
           </div>
 
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">Region:</label>
+            <Select value={regionFilter} onValueChange={setRegionFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All regions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All regions</SelectItem>
+                <SelectItem value="empty">No region</SelectItem>
+                {regionOptions.map((region) => (
+                  <SelectItem key={region} value={region}>
+                    {region}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Custom Field Filters */}
           {customFields.map((field) => (
             <div key={field.id} className="flex items-center gap-2">
@@ -571,7 +658,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
               <span>Search: "{searchQuery}" • </span>
             )}
             Showing {finalRegistrations.length} registration(s) 
-            {(churchFilter !== 'all' || categoryFilter !== 'all' || Object.keys(customFieldFilters).length > 0) && ' with active filters'}
+            {(churchFilter !== 'all' || categoryFilter !== 'all' || regionFilter !== 'all' || Object.keys(customFieldFilters).length > 0) && ' with active filters'}
           </div>
         )}
       </div>
@@ -1003,79 +1090,178 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
 
         {/* Groupings Tab */}
         <TabsContent value="groupings" className="space-y-4">
-          {Object.keys(groupedCustomFieldResponses).length === 0 ? (
-            <div className="text-center py-12">
-              <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No Custom Fields with Options</h3>
-              <p className="text-muted-foreground">
-                Groupings will appear here when you have custom fields with dropdown options.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
+          <div className="space-y-2">
+            <Accordion type="multiple" className="w-full">
+              {/* Group by Regions */}
+              <AccordionItem key="regions" value="regions" className="border rounded-md px-4 mb-2">
+                <AccordionTrigger className="py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold">Regions</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {Object.values(groupedByRegion).reduce((acc, regs) => acc + regs.length, 0)} total
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Region</TableHead>
+                          <TableHead className="w-[120px] text-right">Count</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(groupedByRegion).map(([region, regs]) => {
+                          const key = `regions::${region}`;
+                          const isOpen = expandedGroupRows.has(key);
+                          return (
+                            <React.Fragment key={region}>
+                              <TableRow
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => toggleGroupRow('regions', region)}
+                              >
+                                <TableCell className="font-medium">{region}</TableCell>
+                                <TableCell className="text-right">
+                                  <Badge variant="outline" className="text-xs">
+                                    {regs.length}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                              {isOpen && (
+                                <TableRow>
+                                  <TableCell colSpan={2} className="bg-muted/20">
+                                    {regs.length > 0 ? (
+                                      <div className="space-y-2 max-h-64 overflow-y-auto p-2">
+                                        {regs.map((reg) => (
+                                          <div key={reg.id} className="text-xs p-2 bg-background rounded border">
+                                            <div className="font-medium">
+                                              {getRegistrationDisplayName(reg)}
+                                            </div>
+                                            <div className="text-muted-foreground">{reg.camper_code}</div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <Badge
+                                                variant={reg.has_paid ? "default" : "destructive"}
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {reg.has_paid ? "Paid" : "Unpaid"}
+                                              </Badge>
+                                              <Badge
+                                                variant={reg.has_checked_in ? "default" : "secondary"}
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {reg.has_checked_in ? "In" : "Out"}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground text-center py-4">
+                                        No registrations
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
               {Object.entries(groupedCustomFieldResponses).map(([fieldId, groups]) => {
-                const field = customFields.find(f => f.id === fieldId);
+                const field = customFields.find((f) => f.id === fieldId);
                 if (!field) return null;
+                const totalResponses = Object.values(groups).reduce((total, regs) => total + regs.length, 0);
 
                 return (
-                  <div key={fieldId} className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold">{field.field_name}</h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {Object.values(groups).reduce((total, regs) => total + regs.length, 0)} total responses
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {Object.entries(groups).map(([option, registrations]) => (
-                        <div key={option} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-sm">{option}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {registrations.length}
-                            </Badge>
-                          </div>
-                          
-                          {registrations.length > 0 ? (
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {registrations.map((reg) => (
-                                <div key={reg.id} className="text-xs p-2 bg-muted/50 rounded">
-                                  <div className="font-medium">
-                                    {getRegistrationDisplayName(reg)}
-                                  </div>
-                                  <div className="text-muted-foreground">
-                                    {reg.camper_code}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge 
-                                      variant={reg.has_paid ? "default" : "destructive"} 
-                                      className="text-xs px-1 py-0"
-                                    >
-                                      {reg.has_paid ? "Paid" : "Unpaid"}
-                                    </Badge>
-                                    <Badge 
-                                      variant={reg.has_checked_in ? "default" : "secondary"} 
-                                      className="text-xs px-1 py-0"
-                                    >
-                                      {reg.has_checked_in ? "In" : "Out"}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-muted-foreground text-center py-4">
-                              No registrations
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <AccordionItem key={fieldId} value={fieldId} className="border rounded-md px-4">
+                    <AccordionTrigger className="py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-semibold">{field.field_name}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {totalResponses} total responses
+                        </Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Option</TableHead>
+                              <TableHead className="w-[120px] text-right">Count</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {Object.entries(groups).map(([option, regs]) => {
+                              const key = `${fieldId}::${option}`;
+                              const isOpen = expandedGroupRows.has(key);
+                              return (
+                                <React.Fragment key={option}>
+                                  <TableRow
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => toggleGroupRow(fieldId, option)}
+                                  >
+                                    <TableCell className="font-medium">{option}</TableCell>
+                                    <TableCell className="text-right">
+                                      <Badge variant="outline" className="text-xs">
+                                        {regs.length}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                  {isOpen && (
+                                    <TableRow>
+                                      <TableCell colSpan={2} className="bg-muted/20">
+                                        {regs.length > 0 ? (
+                                          <div className="space-y-2 max-h-64 overflow-y-auto p-2">
+                                            {regs.map((reg) => (
+                                              <div key={reg.id} className="text-xs p-2 bg-background rounded border">
+                                                <div className="font-medium">
+                                                  {getRegistrationDisplayName(reg)}
+                                                </div>
+                                                <div className="text-muted-foreground">{reg.camper_code}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                  <Badge
+                                                    variant={reg.has_paid ? "default" : "destructive"}
+                                                    className="text-xs px-1 py-0"
+                                                  >
+                                                    {reg.has_paid ? "Paid" : "Unpaid"}
+                                                  </Badge>
+                                                  <Badge
+                                                    variant={reg.has_checked_in ? "default" : "secondary"}
+                                                    className="text-xs px-1 py-0"
+                                                  >
+                                                    {reg.has_checked_in ? "In" : "Out"}
+                                                  </Badge>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-muted-foreground text-center py-4">
+                                            No registrations
+                                          </div>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 );
               })}
-            </div>
-          )}
+            </Accordion>
+          </div>
         </TabsContent>
       </Tabs>
 
