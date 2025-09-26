@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import { Download, Eye, Users, Search } from "lucide-react";
+import { Download, Eye, Users, Search, Loader2, FileSpreadsheet } from "lucide-react";
+import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -11,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +61,13 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ payments, isLoading = fal
   // Modal state for viewing campers
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [showCampersModal, setShowCampersModal] = useState(false);
+
+  // Selection state
+  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<string>('');
 
   // Utility functions
   const formatDate = (dateString: string) => {
@@ -118,7 +136,235 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ payments, isLoading = fal
     setPage(1);
   };
 
-  // Export to CSV function
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedPayments(filteredPayments.map(payment => payment.id));
+    } else {
+      setSelectedPayments([]);
+    }
+  };
+
+  const handleSelectPayment = (paymentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPayments(prev => [...prev, paymentId]);
+    } else {
+      setSelectedPayments(prev => prev.filter(id => id !== paymentId));
+    }
+  };
+
+  const allSelected = selectedPayments.length === filteredPayments.length && filteredPayments.length > 0;
+  const someSelected = selectedPayments.length > 0;
+
+  // Prepare payment data for export
+  const preparePaymentData = (payment: Payment) => {
+    const campersList = payment.registrations && payment.registrations.length > 0
+      ? payment.registrations
+          .map((reg) => reg.camper_name || reg.camper_code || "N/A")
+          .join(", ")
+      : "—";
+
+    return {
+      'Amount': payment.amount,
+      'Payment Channel': formatPaymentChannel(payment.payment_channel),
+      'Payment Date': formatDate(payment.payment_date),
+      'Reference': payment.payment_reference,
+      'Recorded By': payment.recorded_by,
+      'Number of Campers': payment.registrations?.length || 0,
+      'Campers': campersList,
+      'Camper Codes': payment.registrations && payment.registrations.length > 0
+        ? payment.registrations
+            .map((reg) => reg.camper_code || "N/A")
+            .join(", ")
+        : "—",
+    };
+  };
+
+  // Export filtered data
+  const exportFilteredData = async () => {
+    if (filteredPayments.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress('Preparing data for export...');
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setExportProgress('Processing payment records...');
+      
+      const exportData = filteredPayments.map(preparePaymentData);
+
+      setExportProgress('Creating Excel file...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Add main payments sheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Payments');
+
+      // Add detailed campers sheet
+      const camperDetails: any[] = [];
+      filteredPayments.forEach(payment => {
+        if (payment.registrations && payment.registrations.length > 0) {
+          payment.registrations.forEach(reg => {
+            camperDetails.push({
+              'Payment Reference': payment.payment_reference,
+              'Payment Amount': payment.amount,
+              'Payment Channel': formatPaymentChannel(payment.payment_channel),
+              'Payment Date': formatDate(payment.payment_date),
+              'Camper Name': reg.camper_name || 'N/A',
+              'Camper Code': reg.camper_code || 'N/A',
+              'Recorded By': payment.recorded_by,
+            });
+          });
+        }
+      });
+
+      if (camperDetails.length > 0) {
+        const camperWs = XLSX.utils.json_to_sheet(camperDetails);
+        const camperColWidths = Object.keys(camperDetails[0] || {}).map(key => ({
+          wch: Math.max(key.length, 15)
+        }));
+        camperWs['!cols'] = camperColWidths;
+        XLSX.utils.book_append_sheet(wb, camperWs, 'Payment Details');
+      }
+
+      // Add summary sheet
+      const summaryData = [
+        { 'Metric': 'Total Payments', 'Value': filteredPayments.length },
+        { 'Metric': 'Total Amount', 'Value': filteredPayments.reduce((sum, p) => sum + p.amount, 0) },
+        { 'Metric': 'Total Campers', 'Value': filteredPayments.reduce((sum, p) => sum + (p.registrations?.length || 0), 0) },
+        { 'Metric': '', 'Value': '' }, // Empty row
+        { 'Metric': 'Channel Breakdown', 'Value': '' },
+      ];
+
+      // Add channel breakdown
+      const channelBreakdown = filteredPayments.reduce((acc, p) => {
+        const channel = formatPaymentChannel(p.payment_channel);
+        if (!acc[channel]) acc[channel] = { count: 0, amount: 0 };
+        acc[channel].count += 1;
+        acc[channel].amount += p.amount;
+        return acc;
+      }, {} as Record<string, { count: number; amount: number }>);
+
+      Object.entries(channelBreakdown).forEach(([channel, data]) => {
+        summaryData.push({
+          'Metric': `  ${channel} (Count)`,
+          'Value': data.count
+        });
+        summaryData.push({
+          'Metric': `  ${channel} (Amount)`,
+          'Value': data.amount
+        });
+      });
+
+      const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+      summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+
+      setExportProgress('Finalizing export...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Generate filename with filters info
+      let filename = 'payments';
+      const filterParts = [];
+      
+      if (channelFilter !== 'all') {
+        filterParts.push(`channel-${channelFilter.replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (searchTerm.trim()) {
+        filterParts.push(`search-${searchTerm.trim().replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (filterParts.length > 0) {
+        filename += `-${filterParts.join('-')}`;
+      }
+      
+      filename += `-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      setExportProgress('Export completed!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExportProgress('Export failed. Please try again.');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } finally {
+      setIsExporting(false);
+      setExportProgress('');
+    }
+  };
+
+  // Export selected data
+  const exportSelectedData = async () => {
+    if (selectedPayments.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress('Preparing selected payments for export...');
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const selectedRecords = filteredPayments.filter(payment => 
+        selectedPayments.includes(payment.id)
+      );
+
+      setExportProgress('Processing selected payments...');
+      
+      const exportData = selectedRecords.map(preparePaymentData);
+
+      setExportProgress('Creating Excel file...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Add selected payments sheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Selected Payments');
+
+      setExportProgress('Finalizing export...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const filename = `payments-selected-${selectedPayments.length}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      setExportProgress('Selected export completed!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (error) {
+      console.error('Selected export failed:', error);
+      setExportProgress('Selected export failed. Please try again.');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } finally {
+      setIsExporting(false);
+      setExportProgress('');
+    }
+  };
+
+  // Legacy CSV export function (kept for compatibility)
   const exportToCSV = () => {
     const headers = [
       "Amount",
@@ -206,15 +452,49 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ payments, isLoading = fal
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Manage Payments</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportToCSV}
-              disabled={filteredPayments.length === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isExporting || filteredPayments.length === 0}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={exportFilteredData}
+                    disabled={isExporting || filteredPayments.length === 0}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export Filtered Data (Excel)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={exportSelectedData}
+                    disabled={isExporting || selectedPayments.length === 0}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export Selected ({selectedPayments.length})
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={exportToCSV}
+                    disabled={isExporting || filteredPayments.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export as CSV (Legacy)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -249,12 +529,55 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ payments, isLoading = fal
         </CardContent>
       </Card>
 
+      {/* Export Progress Indicator */}
+      {isExporting && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+            <div>
+              <div className="text-sm font-medium text-blue-900">Exporting Data</div>
+              <div className="text-sm text-blue-700">{exportProgress}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Actions */}
+      {someSelected && (
+        <div className="p-4 bg-muted rounded-lg flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selectedPayments.length} payment(s) selected
+          </span>
+          <div className="flex space-x-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={exportSelectedData}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Export Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Payments Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Channel</TableHead>
                 <TableHead>Date</TableHead>
@@ -266,13 +589,21 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ payments, isLoading = fal
             <TableBody>
               {paginatedPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     {searchTerm || channelFilter !== 'all' ? 'No payments match your filters' : 'No payments found'}
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedPayments.map((payment) => (
                   <TableRow key={payment.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedPayments.includes(payment.id)}
+                        onCheckedChange={(checked) => 
+                          handleSelectPayment(payment.id, checked as boolean)
+                        }
+                      />
+                    </TableCell>
                     <TableCell>
                       <span className="font-medium">{formatCurrency(payment.amount)}</span>
                     </TableCell>

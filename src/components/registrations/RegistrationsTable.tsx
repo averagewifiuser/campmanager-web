@@ -1,6 +1,7 @@
 // src/components/registrations/RegistrationsTable.tsx
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import { 
   MoreHorizontal, 
   Edit, 
@@ -19,7 +20,10 @@ import {
   EyeOff,
   ChevronLeft,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Download,
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +111,10 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
 
   // Groupings row expansion state (fieldId::option)
   const [expandedGroupRows, setExpandedGroupRows] = useState<Set<string>>(new Set());
+
+  // Export state
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<string>('');
 
   const toggleGroupRow = (fieldId: string, option: string) => {
     const key = `${fieldId}::${option}`;
@@ -416,6 +424,294 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     }));
   };
 
+  // Export functions
+  const prepareRegistrationData = (registration: Registration) => {
+    const church = churches.find(c => c.id === registration.church_id);
+    const category = categories.find(c => c.id === registration.category_id);
+    
+    const baseData = {
+      'Camper Code': registration.camper_code || 'N/A',
+      'Surname': registration.surname || '',
+      'Middle Name': registration.middle_name || '',
+      'Last Name': registration.last_name || '',
+      'Full Name': getRegistrationDisplayName(registration),
+      'Age': registration.age,
+      'Email': registration.email || 'N/A',
+      'Phone': registration.phone_number || 'N/A',
+      'Emergency Contact Name': registration.emergency_contact_name || 'N/A',
+      'Emergency Contact Phone': registration.emergency_contact_phone || 'N/A',
+      'Church': church?.name || 'N/A',
+      'Church Area': church?.area || 'N/A',
+      'Church District': church?.district || 'N/A',
+      'Church Region': church?.region || 'N/A',
+      'Category': category?.name || 'N/A',
+      'Total Amount': registration.total_amount,
+      'Payment Status': registration.has_paid ? 'Paid' : 'Unpaid',
+      'Check-in Status': registration.has_checked_in ? 'Checked In' : 'Not Checked In',
+      'Registration Date': format(new Date(registration.registration_date), 'yyyy-MM-dd HH:mm:ss'),
+    };
+
+    // Add custom field responses
+    const customFieldData: Record<string, any> = {};
+    Object.entries(registration.custom_field_responses).forEach(([fieldId, value]) => {
+      const field = customFields.find(f => f.id === fieldId);
+      if (field) {
+        customFieldData[field.field_name] = formatCustomFieldResponse(field, value);
+      }
+    });
+
+    return { ...baseData, ...customFieldData };
+  };
+
+  const exportFilteredData = async () => {
+    if (finalRegistrations.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress('Preparing data for export...');
+
+    try {
+      // Simulate processing time for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setExportProgress('Processing registrations...');
+      
+      const exportData = finalRegistrations.map(prepareRegistrationData);
+
+      setExportProgress('Creating Excel file...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Add main registrations sheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Registrations');
+
+      setExportProgress('Finalizing export...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Generate filename with filters info
+      let filename = 'registrations';
+      const filterParts = [];
+      
+      if (churchFilter !== 'all') {
+        const church = churches.find(c => c.id === churchFilter);
+        if (church) filterParts.push(`church-${church.name.replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (categoryFilter !== 'all') {
+        const category = categories.find(c => c.id === categoryFilter);
+        if (category) filterParts.push(`category-${category.name.replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (regionFilter !== 'all') {
+        filterParts.push(`region-${regionFilter.replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (searchQuery.trim()) {
+        filterParts.push(`search-${searchQuery.trim().replace(/[^a-zA-Z0-9]/g, '-')}`);
+      }
+      
+      if (filterParts.length > 0) {
+        filename += `-${filterParts.join('-')}`;
+      }
+      
+      filename += `-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      setExportProgress('Export completed!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExportProgress('Export failed. Please try again.');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } finally {
+      setIsExporting(false);
+      setExportProgress('');
+    }
+  };
+
+  const exportGroupedData = async () => {
+    if (finalRegistrations.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress('Preparing grouped data for export...');
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      setExportProgress('Processing regional groupings...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Add regions sheet
+      const regionData: any[] = [];
+      Object.entries(groupedByRegion).forEach(([region, regs]) => {
+        regs.forEach(reg => {
+          regionData.push({
+            'Region': region,
+            ...prepareRegistrationData(reg)
+          });
+        });
+      });
+
+      if (regionData.length > 0) {
+        const regionWs = XLSX.utils.json_to_sheet(regionData);
+        const colWidths = Object.keys(regionData[0] || {}).map(key => ({
+          wch: Math.max(key.length, 15)
+        }));
+        regionWs['!cols'] = colWidths;
+        XLSX.utils.book_append_sheet(wb, regionWs, 'By Region');
+      }
+
+      setExportProgress('Processing custom field groupings...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Add custom field groupings sheets
+      let sheetIndex = 0;
+      for (const [fieldId, groups] of Object.entries(groupedCustomFieldResponses)) {
+        const field = customFields.find(f => f.id === fieldId);
+        if (!field) continue;
+
+        const fieldData: any[] = [];
+        Object.entries(groups).forEach(([option, regs]) => {
+          regs.forEach(reg => {
+            fieldData.push({
+              [field.field_name]: option,
+              ...prepareRegistrationData(reg)
+            });
+          });
+        });
+
+        if (fieldData.length > 0) {
+          const fieldWs = XLSX.utils.json_to_sheet(fieldData);
+          const colWidths = Object.keys(fieldData[0] || {}).map(key => ({
+            wch: Math.max(key.length, 15)
+          }));
+          fieldWs['!cols'] = colWidths;
+          
+          // Truncate sheet name if too long (Excel limit is 31 characters)
+          let sheetName = `By ${field.field_name}`;
+          if (sheetName.length > 31) {
+            sheetName = sheetName.substring(0, 28) + '...';
+          }
+          
+          XLSX.utils.book_append_sheet(wb, fieldWs, sheetName);
+          sheetIndex++;
+        }
+      }
+
+      setExportProgress('Creating summary sheet...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Add summary sheet
+      const summaryData = [
+        { 'Metric': 'Total Registrations', 'Count': finalRegistrations.length },
+        { 'Metric': 'Paid Registrations', 'Count': finalRegistrations.filter(r => r.has_paid).length },
+        { 'Metric': 'Unpaid Registrations', 'Count': finalRegistrations.filter(r => !r.has_paid).length },
+        { 'Metric': 'Checked In', 'Count': finalRegistrations.filter(r => r.has_checked_in).length },
+        { 'Metric': 'Not Checked In', 'Count': finalRegistrations.filter(r => !r.has_checked_in).length },
+        { 'Metric': '', 'Count': '' }, // Empty row
+        { 'Metric': 'Regional Breakdown', 'Count': '' },
+        ...Object.entries(groupedByRegion).map(([region, regs]) => ({
+          'Metric': `  ${region}`,
+          'Count': regs.length
+        }))
+      ];
+
+      const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+      summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+
+      setExportProgress('Finalizing grouped export...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Generate filename
+      const filename = `registrations-grouped-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      setExportProgress('Grouped export completed!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (error) {
+      console.error('Grouped export failed:', error);
+      setExportProgress('Grouped export failed. Please try again.');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } finally {
+      setIsExporting(false);
+      setExportProgress('');
+    }
+  };
+
+  const exportSelectedData = async () => {
+    if (selectedRegistrations.length === 0) return;
+
+    setIsExporting(true);
+    setExportProgress('Preparing selected registrations for export...');
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const selectedRegs = finalRegistrations.filter(reg => 
+        selectedRegistrations.includes(reg.id)
+      );
+
+      setExportProgress('Processing selected registrations...');
+      
+      const exportData = selectedRegs.map(prepareRegistrationData);
+
+      setExportProgress('Creating Excel file...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Add selected registrations sheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Selected Registrations');
+
+      setExportProgress('Finalizing export...');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const filename = `registrations-selected-${selectedRegistrations.length}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(wb, filename);
+
+      setExportProgress('Selected export completed!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+    } catch (error) {
+      console.error('Selected export failed:', error);
+      setExportProgress('Selected export failed. Please try again.');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } finally {
+      setIsExporting(false);
+      setExportProgress('');
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -699,7 +995,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
             </div>
           )}
 
-          {/* View Options */}
+          {/* View Options and Export */}
           {finalRegistrations.length > 0 && (
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -731,6 +1027,36 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Export Options */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportFilteredData}
+                  disabled={isExporting || finalRegistrations.length === 0}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export Filtered Data
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Export Progress Indicator */}
+          {isExporting && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                <div>
+                  <div className="text-sm font-medium text-blue-900">Exporting Data</div>
+                  <div className="text-sm text-blue-700">{exportProgress}</div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -750,7 +1076,17 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                     <Button size="sm" variant="outline">
                       Check In
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={exportSelectedData}
+                      disabled={isExporting}
+                    >
+                      {isExporting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
                       Export Selected
                     </Button>
                   </div>
@@ -1090,6 +1426,58 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
 
         {/* Groupings Tab */}
         <TabsContent value="groupings" className="space-y-4">
+          {/* Groupings Header with Export */}
+          {finalRegistrations.length > 0 && (
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-medium">Registration Groupings</h3>
+                <p className="text-sm text-muted-foreground">
+                  View registrations organized by regions and custom field responses
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportGroupedData}
+                disabled={isExporting || finalRegistrations.length === 0}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
+                Export Groupings
+              </Button>
+            </div>
+          )}
+
+          {/* Export Progress Indicator for Groupings */}
+          {isExporting && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                <div>
+                  <div className="text-sm font-medium text-blue-900">Exporting Grouped Data</div>
+                  <div className="text-sm text-blue-700">{exportProgress}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state for groupings */}
+          {finalRegistrations.length === 0 && (
+            <div className="text-center py-12">
+              <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">No data to group</h3>
+              <p className="text-muted-foreground">
+                {hasActiveFilters 
+                  ? 'No registrations match your current filters to create groupings.'
+                  : 'When registrations are available, you\'ll see them grouped by regions and custom fields here.'
+                }
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Accordion type="multiple" className="w-full">
               {/* Group by Regions */}
