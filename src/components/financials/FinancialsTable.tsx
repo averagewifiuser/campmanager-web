@@ -227,11 +227,15 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       XLSX.utils.book_append_sheet(wb, ws, 'Financials');
 
       // Add summary sheet
+      const totalIncome = filteredFinancials.filter(f => f.transaction_type === 'income').reduce((sum, f) => sum + Number(f.amount), 0);
+      const totalExpenses = filteredFinancials.filter(f => f.transaction_type === 'expense').reduce((sum, f) => sum + Number(f.amount), 0);
+      const netAmount = filteredFinancials.reduce((sum, f) => sum + (f.transaction_type === 'income' ? Number(f.amount) : -Number(f.amount)), 0);
+
       const summaryData = [
         { 'Metric': 'Total Records', 'Value': filteredFinancials.length },
-        { 'Metric': 'Total Income', 'Value': filteredFinancials.filter(f => f.transaction_type === 'income').reduce((sum, f) => sum + f.amount, 0) },
-        { 'Metric': 'Total Expenses', 'Value': filteredFinancials.filter(f => f.transaction_type === 'expense').reduce((sum, f) => sum + f.amount, 0) },
-        { 'Metric': 'Net Amount', 'Value': filteredFinancials.reduce((sum, f) => sum + (f.transaction_type === 'income' ? f.amount : -f.amount), 0) },
+        { 'Metric': 'Total Income', 'Value': totalIncome },
+        { 'Metric': 'Total Expenses', 'Value': totalExpenses },
+        { 'Metric': 'Net Amount', 'Value': netAmount },
         { 'Metric': '', 'Value': '' }, // Empty row
         { 'Metric': 'Category Breakdown', 'Value': '' },
       ];
@@ -240,19 +244,31 @@ const FinancialsTable: React.FC<FinancialsTableProps> = ({ financials, isLoading
       const categoryBreakdown = filteredFinancials.reduce((acc, f) => {
         const category = formatTransactionCategory(f.transaction_category);
         if (!acc[category]) acc[category] = 0;
-        acc[category] += f.transaction_type === 'income' ? f.amount : -f.amount;
+        acc[category] += f.transaction_type === 'income' ? Number(f.amount) : -Number(f.amount);
         return acc;
       }, {} as Record<string, number>);
 
       Object.entries(categoryBreakdown).forEach(([category, amount]) => {
         summaryData.push({
           'Metric': `  ${category}`,
-          'Value': amount
+          'Value': Number(amount.toFixed(2))
         });
       });
 
       const summaryWs = XLSX.utils.json_to_sheet(summaryData);
       summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      
+      // Format the Value column as numbers where applicable
+      Object.keys(summaryWs).forEach(cell => {
+        if (cell.startsWith('B') && cell !== 'B1') { // Column B (Value), skip header
+          const cellRef = summaryWs[cell];
+          if (cellRef && typeof cellRef.v === 'number') {
+            cellRef.t = 'n'; // Set cell type to number
+            cellRef.z = '#,##0.00'; // Set number format
+          }
+        }
+      });
+      
       XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
 
       setExportProgress('Finalizing export...');
