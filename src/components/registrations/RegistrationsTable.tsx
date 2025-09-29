@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
-import { 
+import {
   MoreHorizontal, 
   Edit, 
   Trash2, 
@@ -23,7 +23,9 @@ import {
   ChevronsRight,
   Download,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  QrCode,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -79,6 +81,8 @@ import {
 import { useChurches } from '@/hooks/useChurches';
 import { useCategories } from '@/hooks/useCategories';
 import { useCustomFields } from '@/hooks/useCustomFields';
+import { useQrTools } from '@/hooks/useQrTools';
+import { useToast } from '@/hooks/use-toast';
 import type { Registration, CustomField } from '@/lib/types';
 
 interface RegistrationsTableProps {
@@ -156,6 +160,101 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   const updatePaymentMutation = useUpdatePaymentStatus();
   const updateCheckinMutation = useUpdateCheckinStatus();
   const deleteRegistrationMutation = useDeleteRegistration();
+
+  // QR Tools
+  const {
+    generatePdf,
+    isGeneratingPdf,
+    pdfProgress,
+    sendEmails,
+    isEmailLoading,
+    //@ts-ignore
+    estimatePdfPages
+  } = useQrTools();
+  
+  const { toast } = useToast();
+
+  // QR Action Handlers
+  const handleGenerateQrPdf = async () => {
+    if (selectedRegistrations.length === 0) {
+      toast({
+        title: "No selections",
+        description: "Please select registrations to generate QR codes.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selectedRegs = finalRegistrations.filter(reg => 
+      selectedRegistrations.includes(reg.id)
+    );
+
+    try {
+      await generatePdf(selectedRegs);
+      toast({
+        title: "QR PDF Generated",
+        description: `Successfully generated QR codes for ${selectedRegs.length} camper(s).`,
+      });
+    } catch (error) {
+      toast({
+        title: "PDF Generation Failed",
+        description: error instanceof Error ? error.message : "An error occurred while generating the PDF.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSendQrEmails = async () => {
+    if (selectedRegistrations.length === 0) {
+      toast({
+        title: "No selections",
+        description: "Please select registrations to send QR emails.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selectedRegs = finalRegistrations.filter(reg => 
+      selectedRegistrations.includes(reg.id)
+    );
+
+    const regsWithEmail = selectedRegs.filter(reg => reg.email && reg.email.trim() !== '');
+
+    if (regsWithEmail.length === 0) {
+      toast({
+        title: "No email addresses",
+        description: "None of the selected registrations have valid email addresses.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const results = await sendEmails(selectedRegs);
+      
+      if (results.success > 0) {
+        toast({
+          title: "QR Emails Sent",
+          description: `Successfully sent QR codes to ${results.success} camper(s)${results.failed > 0 ? `. ${results.failed} email(s) failed to send.` : '.'}`,
+          variant: results.failed > 0 ? "default" : "default"
+        });
+      }
+
+      if (results.failed > 0 && results.success === 0) {
+        toast({
+          title: "Email sending failed",
+          description: "Failed to send any QR code emails. Please check your email configuration.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Email sending failed",
+        description: error instanceof Error ? error.message : "An error occurred while sending emails.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -1065,17 +1164,52 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
             <>
               {/* Bulk Actions */}
               {someSelected && (
-                <div className="mb-4 p-4 bg-muted rounded-lg flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    {selectedRegistrations.length} registration(s) selected
-                  </span>
-                  <div className="flex space-x-2">
+                <div className="mb-4 p-4 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium">
+                      {selectedRegistrations.length} registration(s) selected
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {/* Basic Actions */}
                     <Button size="sm" variant="outline">
                       Mark as Paid
                     </Button>
                     <Button size="sm" variant="outline">
                       Check In
                     </Button>
+                    
+                    {/* QR Code Actions */}
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleGenerateQrPdf}
+                      disabled={isGeneratingPdf}
+                    >
+                      {isGeneratingPdf ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <QrCode className="h-4 w-4 mr-2" />
+                      )}
+                      Generate QR PDF
+                    </Button>
+                    
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleSendQrEmails}
+                      disabled={isEmailLoading}
+                    >
+                      {isEmailLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4 mr-2" />
+                      )}
+                      Email QR Codes
+                    </Button>
+                    
+                    {/* Export Actions */}
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -1089,6 +1223,19 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                       )}
                       Export Selected
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* QR Progress Indicator */}
+              {(isGeneratingPdf && pdfProgress) && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-green-600 animate-spin" />
+                    <div>
+                      <div className="text-sm font-medium text-green-900">Generating QR PDF</div>
+                      <div className="text-sm text-green-700">{pdfProgress}</div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1347,6 +1494,8 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                         <SelectItem value="20">20</SelectItem>
                         <SelectItem value="50">50</SelectItem>
                         <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">500</SelectItem>
+                        <SelectItem value="500">1000</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
