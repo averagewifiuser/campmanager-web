@@ -111,7 +111,7 @@ const RoomAllocationForm: React.FC<RoomAllocationFormProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Filter available rooms (not full, not damaged, and matching gender if campers selected)
+  // Filter available rooms (not full, not damaged, and matching gender if campers selected; rooms with 'other' gender accept any)
   const getAvailableRooms = () => {
     if (selectedRegistrationIds.length === 0) {
       return rooms.filter(room => !room.is_full && !room.is_damaged);
@@ -124,7 +124,7 @@ const RoomAllocationForm: React.FC<RoomAllocationFormProps> = ({
     return rooms.filter(room => 
       !room.is_full && 
       !room.is_damaged && 
-      room.room_gender === requiredGender &&
+      (room.room_gender === requiredGender || room.room_gender === 'other') &&
       room.available_capacity >= selectedRegistrationIds.length
     );
   };
