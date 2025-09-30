@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
 import { useToast } from '../hooks/use-toast';
-import api from '../lib/api';
+import api, { registrationsApi } from '../lib/api';
 import QRScanner from '../components/food/QRScanner';
 
 interface Food {
@@ -40,6 +41,8 @@ const FoodAllocationsPage: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedCampers, setScannedCampers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [manualCamperCode, setManualCamperCode] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   // Get today's date in UTC
   const today = new Date().toISOString().split('T')[0];
@@ -138,6 +141,64 @@ const FoodAllocationsPage: React.FC = () => {
         description: "Failed to allocate food. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Allocate food by manual camper code
+  const allocateFoodByCode = async () => {
+    if (!selectedFood || !campId) {
+      toast({
+        title: "No meal selected",
+        description: "Please select a meal before allocating.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const code = manualCamperCode.trim();
+    if (!code) {
+      toast({
+        title: "Enter camper code",
+        description: "Type the camper code and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLookupLoading(true);
+    try {
+      const registrations = await registrationsApi.getCampRegistrations(campId!);
+      const match = (registrations || []).find((r: any) => (r.camper_code || '').toLowerCase() === code.toLowerCase());
+      if (!match) {
+        toast({
+          title: "Not found",
+          description: `No camper found with code ${code}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      await api.post(`/camps/${campId}/food-allocations`, {
+        data: {
+          food_id: selectedFood.id,
+          registration_id: match.id,
+        }
+      });
+      setScannedCampers(prev => [...prev, match.camper_code || code]);
+      toast({
+        title: "Success",
+        description: `Food allocated to camper ${match.camper_code || code}`,
+        variant: "default",
+      });
+      await fetchTodaysFoods();
+      setManualCamperCode('');
+      setScanMode('meal-selection');
+      setSelectedFood(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to allocate food. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLookupLoading(false);
     }
   };
 
@@ -269,6 +330,23 @@ const FoodAllocationsPage: React.FC = () => {
                 onError={handleQRError}
                 isActive={scanMode === 'qr-scanning'}
               />
+              {/* Manual code entry */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter camper code"
+                    value={manualCamperCode}
+                    onChange={(e) => setManualCamperCode(e.target.value)}
+                  />
+                  <Button
+                    onClick={allocateFoodByCode}
+                    disabled={lookupLoading || manualCamperCode.trim().length === 0}
+                  >
+                    {lookupLoading ? 'Allocating...' : 'Allocate'}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">Tip: You can type the camper code if QR scanning is unavailable.</p>
+              </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
