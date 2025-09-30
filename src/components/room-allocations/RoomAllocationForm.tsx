@@ -196,7 +196,7 @@ const RoomAllocationForm: React.FC<RoomAllocationFormProps> = ({
   };
 
   const getRoomDisplayName = (room: Room) => {
-    return `${room.hostel_name} - ${room.block} - Room ${room.room_number} (${room.available_capacity} available)`;
+    return `${room.hostel_name} - ${room.block} - Room ${room.room_number} (capacity: ${room.room_capacity}, available: ${room.available_capacity})`;
   };
 
   const availableRooms = getAvailableRooms();
