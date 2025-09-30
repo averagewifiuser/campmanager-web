@@ -280,7 +280,9 @@ export interface Purchase {
   id: string;
   camp_id: string;
   amount: number;
+  camper_name: string | null;
   inventory_ids: string;
+  is_item_supplied: boolean;
   items: PurchaseItem[];
   purchase_date: string;
   sold_by: string;
@@ -290,7 +292,9 @@ export interface Purchase {
 
 export interface CreatePurchaseRequest {
   amount: string;
+  camper_name: string | null;
   inventory_ids: string;
+  is_item_supplied: boolean;
   items: PurchaseItem[];
 }
 

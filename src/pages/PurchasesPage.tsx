@@ -19,6 +19,7 @@ const PurchasesPage = () => {
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [soldByFilter, setSoldByFilter] = useState<string>('all');
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
 
   // Filter purchases based on "Sold By" filter
   const filteredPurchases = purchases.filter(purchase => {
@@ -69,16 +70,24 @@ const PurchasesPage = () => {
     if (!campId) return;
     setFormLoading(true);
     try {
-      // Create new purchase
-      await purchasesApi.createPurchase(campId, formData);
+      if (selectedPurchase) {
+        // Update existing purchase and include camp_id in the request body
+        await purchasesApi.updatePurchase(selectedPurchase.id, formData, campId);
+      } else {
+        // Create new purchase
+        await purchasesApi.createPurchase(campId, formData);
+      }
       
-      // Refetch purchases after successful creation
+      // Refetch purchases after successful operation
       const updatedPurchases = await purchasesApi.getCampPurchases(campId);
       setPurchases(updatedPurchases || []);
       setSideNavOpen(false);
+      setSelectedPurchase(null);
       toast({
         title: "Success",
-        description: "Purchase has been recorded successfully.",
+        description: selectedPurchase
+          ? "Purchase has been updated successfully."
+          : "Purchase has been recorded successfully.",
         variant: "default",
       });
     } catch (error: any) {
@@ -93,7 +102,7 @@ const PurchasesPage = () => {
         });
       } else {
         // Handle other errors
-        const errorMessage = error?.response?.data?.message || error?.message || "Failed to create purchase";
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to save purchase";
         toast({
           title: "Error",
           description: errorMessage,
@@ -107,6 +116,7 @@ const PurchasesPage = () => {
 
   const handleCloseSideNav = () => {
     setSideNavOpen(false);
+    setSelectedPurchase(null);
   };
 
   if (!campId) {
@@ -240,6 +250,10 @@ const PurchasesPage = () => {
                 isLoading={loading}
                 soldByFilter={soldByFilter}
                 onSoldByFilterChange={setSoldByFilter}
+                onEdit={(purchase) => {
+                  setSelectedPurchase(purchase);
+                  setSideNavOpen(true);
+                }}
               />
             </>
           )}
@@ -250,7 +264,7 @@ const PurchasesPage = () => {
       {sideNavOpen && (
         <div className="fixed right-0 top-0 h-full w-full sm:w-3/4 md:w-1/2 bg-white border-l shadow-lg z-50">
           <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-xl font-semibold">New Purchase</h2>
+            <h2 className="text-xl font-semibold">{selectedPurchase ? "Edit Purchase" : "New Purchase"}</h2>
             <Button
               variant="ghost"
               size="sm"
@@ -264,6 +278,7 @@ const PurchasesPage = () => {
               onSubmit={handlePurchaseSubmit}
               onCancel={handleCloseSideNav}
               loading={formLoading}
+              initialPurchase={selectedPurchase}
             />
           </div>
         </div>

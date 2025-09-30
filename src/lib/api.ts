@@ -424,6 +424,19 @@ export const purchasesApi = {
     const response = await api.post<ApiResponse<Purchase>>(`/camps/${campId}/purchases`, { data });
     return response.data.data;
   },
+
+  // Update an existing purchase. Backend expects camp_id in the request body.
+  updatePurchase: async (
+    purchaseId: string,
+    data: Partial<CreatePurchaseRequest>,
+    campId: string
+  ): Promise<Purchase> => {
+    const response = await api.put<ApiResponse<Purchase>>(
+      `/camps/purchases/${purchaseId}`,
+      { data: { ...data, camp_id: campId } }
+    );
+    return response.data.data;
+  },
 };
 
 /**

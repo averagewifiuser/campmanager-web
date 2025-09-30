@@ -14,6 +14,7 @@ interface PurchasesTableProps {
   isLoading: boolean;
   soldByFilter?: string;
   onSoldByFilterChange?: (value: string) => void;
+  onEdit?: (purchase: Purchase) => void;
 }
 
 const PurchasesTable: React.FC<PurchasesTableProps> = ({
@@ -21,6 +22,7 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
   isLoading,
   soldByFilter = 'all',
   onSoldByFilterChange,
+  onEdit,
 }) => {
   const { campId } = useParams();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -100,6 +102,7 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
       "Purchase ID",
       "Amount",
       "Items Count",
+      "Supplied",
       "Item Names",
       "Purchase Date",
       "Sold By"
@@ -108,6 +111,7 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
       purchase.id,
       purchase.amount,
       purchase.items?.length || 0,
+      purchase.is_item_supplied ? "Yes" : "No",
       getItemNames(purchase),
       formatDate(purchase.purchase_date),
       purchase.sold_by || 'N/A'
@@ -221,15 +225,17 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
                 <TableHead>Purchase ID</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Items</TableHead>
+                <TableHead>Supplied</TableHead>
                 <TableHead>Item Names</TableHead>
                 <TableHead>Purchase Date</TableHead>
                 <TableHead>Sold By</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedPurchases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     {searchTerm || soldByFilter !== 'all' ? 'No purchases match your filters' : 'No purchases found'}
                   </TableCell>
                 </TableRow>
@@ -245,6 +251,9 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
                     <TableCell className="text-sm">
                       {purchase.items?.length || 0} item(s)
                     </TableCell>
+                    <TableCell>
+                      {purchase.is_item_supplied ? 'Yes' : 'No'}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate" title={getItemNames(purchase)}>
                       {getItemNames(purchase)}
                     </TableCell>
@@ -253,6 +262,17 @@ const PurchasesTable: React.FC<PurchasesTableProps> = ({
                     </TableCell>
                     <TableCell className="font-medium">
                       {purchase.sold_by || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {onEdit ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(purchase)}
+                        >
+                          Edit
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))

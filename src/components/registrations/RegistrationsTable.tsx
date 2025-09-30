@@ -1,5 +1,5 @@
 // src/components/registrations/RegistrationsTable.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import {
@@ -84,6 +84,7 @@ import { useCustomFields } from '@/hooks/useCustomFields';
 import { useQrTools } from '@/hooks/useQrTools';
 import { useToast } from '@/hooks/use-toast';
 import type { Registration, CustomField } from '@/lib/types';
+import { paymentsApi } from '@/lib/api';
 
 interface RegistrationsTableProps {
   campId: string;
@@ -142,6 +143,34 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
   
     
   const registrations = allRegistrations;
+
+  // Track registrations that have at least one payment recorded
+  const [registrationsWithPayments, setRegistrationsWithPayments] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const payments = await paymentsApi.getCampPayments(campId);
+        if (!mounted) return;
+        const set = new Set<string>();
+        (payments || []).forEach((p: any) => {
+          (p.registrations || []).forEach((reg: any) => {
+            if (reg?.id) set.add(reg.id);
+          });
+        });
+        setRegistrationsWithPayments(set);
+      } catch {
+        // ignore fetch errors for payments in this view
+      }
+    };
+    if (campId) {
+      load();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [campId]);
   
   // Fetch filter options
   const { data: churches = [] } = useChurches(campId);
@@ -356,6 +385,17 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
     return `${reg.surname || ""} ${reg.middle_name || ""} ${reg.last_name || ""}`.trim();
   };
 
+  // Determine human-friendly payment status for a registration
+  const getPaymentStatus = (reg: Registration) => {
+    if (reg.has_paid) {
+      return { label: 'Paid', variant: 'default' as const, className: '' };
+    }
+    if (registrationsWithPayments.has(reg.id)) {
+      return { label: 'Partly Paid', variant: 'secondary' as const, className: 'bg-amber-500 text-white hover:bg-amber-600 border-transparent' };
+    }
+    return { label: 'Unpaid', variant: 'destructive' as const, className: '' };
+  };
+
   // Helper function to get custom field name by ID
   //@ts-ignore
   const getCustomFieldName = (fieldId: string): string => {
@@ -545,7 +585,7 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
       'Church Region': church?.region || 'N/A',
       'Category': category?.name || 'N/A',
       'Total Amount': registration.total_amount,
-      'Payment Status': registration.has_paid ? 'Paid' : 'Unpaid',
+      'Payment Status': getPaymentStatus(registration).label,
       'Check-in Status': registration.has_checked_in ? 'Checked In' : 'Not Checked In',
       'Registration Date': format(new Date(registration.registration_date), 'yyyy-MM-dd HH:mm:ss'),
     };
@@ -1369,17 +1409,19 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                                 size="sm"
                                 disabled={updatePaymentMutation.isPending}
                               >
-                                {registration.has_paid ? (
-                                  <Badge variant="default" className="cursor-pointer">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Paid
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="destructive" className="cursor-pointer">
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Unpaid
-                                  </Badge>
-                                )}
+                                {(() => {
+                                  const status = getPaymentStatus(registration);
+                                  return (
+                                    <Badge variant={status.variant} className={`cursor-pointer ${status.className}`}>
+                                      {status.label === 'Unpaid' ? (
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                      ) : (
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                      )}
+                                      {status.label}
+                                    </Badge>
+                                  );
+                                })()}
                               </Button>
                             </TableCell>
                             
@@ -1677,12 +1719,17 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                                             </div>
                                             <div className="text-muted-foreground">{reg.camper_code}</div>
                                             <div className="flex items-center gap-2 mt-1">
-                                              <Badge
-                                                variant={reg.has_paid ? "default" : "destructive"}
-                                                className="text-xs px-1 py-0"
-                                              >
-                                                {reg.has_paid ? "Paid" : "Unpaid"}
-                                              </Badge>
+                                              {(() => {
+                                                const status = getPaymentStatus(reg);
+                                                return (
+                                                  <Badge
+                                                    variant={status.variant}
+                                                    className={`text-xs px-1 py-0 ${status.className}`}
+                                                  >
+                                                    {status.label}
+                                                  </Badge>
+                                                );
+                                              })()}
                                               <Badge
                                                 variant={reg.has_checked_in ? "default" : "secondary"}
                                                 className="text-xs px-1 py-0"
@@ -1763,12 +1810,17 @@ export const RegistrationsTable: React.FC<RegistrationsTableProps> = ({
                                                 </div>
                                                 <div className="text-muted-foreground">{reg.camper_code}</div>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                  <Badge
-                                                    variant={reg.has_paid ? "default" : "destructive"}
-                                                    className="text-xs px-1 py-0"
-                                                  >
-                                                    {reg.has_paid ? "Paid" : "Unpaid"}
-                                                  </Badge>
+                                                  {(() => {
+                                                    const status = getPaymentStatus(reg);
+                                                    return (
+                                                      <Badge
+                                                        variant={status.variant}
+                                                        className={`text-xs px-1 py-0 ${status.className}`}
+                                                      >
+                                                        {status.label}
+                                                      </Badge>
+                                                    );
+                                                  })()}
                                                   <Badge
                                                     variant={reg.has_checked_in ? "default" : "secondary"}
                                                     className="text-xs px-1 py-0"
