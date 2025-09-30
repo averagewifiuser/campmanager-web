@@ -2,7 +2,8 @@ import React, { useState, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Users, Calendar, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Edit, Trash2, Users, Calendar, Filter, Search } from "lucide-react";
 
 // Mock Select Components
 type MockSelectProps = {
@@ -68,6 +69,7 @@ const RoomAllocationsTable: React.FC<RoomAllocationsTableProps> = ({
   onDelete 
 }) => {
   const [selectedHostel, setSelectedHostel] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Get unique hostels from allocations data
   const availableHostels = useMemo(() => {
@@ -79,13 +81,36 @@ const RoomAllocationsTable: React.FC<RoomAllocationsTableProps> = ({
     return hostels.sort();
   }, [allocations]);
 
-  // Filter allocations based on selected hostel
+  // Filter allocations based on selected hostel + search
   const filteredAllocations = useMemo(() => {
-    if (!selectedHostel) return allocations;
-    return allocations.filter(allocation => 
-      allocation.room?.hostel_name === selectedHostel
-    );
-  }, [allocations, selectedHostel]);
+    let list = allocations;
+
+    // Hostel filter
+    if (selectedHostel) {
+      list = list.filter(a => a.room?.hostel_name === selectedHostel);
+    }
+
+    // Text search
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((a) => {
+        const fullName = `${a.registration?.surname || ""} ${a.registration?.middle_name || ""} ${a.registration?.last_name || ""}`.toLowerCase();
+        const camperCode = a.registration?.camper_code?.toLowerCase() || "";
+        const roomStr = `${a.room?.hostel_name || ""} ${a.room?.block || ""} ${a.room?.room_number || ""} ${a.room?.room_gender || ""}`.toLowerCase();
+        const allocator = a.allocator_name?.toLowerCase() || "";
+        const notes = a.notes?.toLowerCase() || "";
+        return (
+          fullName.includes(q) ||
+          camperCode.includes(q) ||
+          roomStr.includes(q) ||
+          allocator.includes(q) ||
+          notes.includes(q)
+        );
+      });
+    }
+
+    return list;
+  }, [allocations, selectedHostel, searchQuery]);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -152,7 +177,18 @@ const RoomAllocationsTable: React.FC<RoomAllocationsTableProps> = ({
               </MockSelectItem>
             ))}
           </MockSelect>
-          {selectedHostel && (
+
+          <div className="ml-auto relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by camper, code, room, allocator, notes..."
+              className="pl-10"
+            />
+          </div>
+
+          {(selectedHostel || (searchQuery && searchQuery.trim() !== "")) && (
             <span className="text-sm text-gray-500">
               Showing {filteredAllocations.length} of {allocations.length} allocations
             </span>
