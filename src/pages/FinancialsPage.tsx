@@ -19,14 +19,20 @@ const FinancialsPage = () => {
   const [formLoading, setFormLoading] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [recordedByFilter, setRecordedByFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
 
-  // Filter financials based on "Recorded By" filter
+  // Filter financials based on filters
   const filteredFinancials = financials.filter(financial => {
-    return recordedByFilter === 'all' || financial.recorded_by === recordedByFilter;
+    const matchesRecordedBy = recordedByFilter === 'all' || financial.recorded_by === recordedByFilter;
+    const matchesPaymentMethod = paymentMethodFilter === 'all' || financial.payment_method === paymentMethodFilter;
+    return matchesRecordedBy && matchesPaymentMethod;
   });
 
   // Get unique "Recorded By" values for filter dropdown
   const uniqueRecordedBy = [...new Set(financials.map(f => f.recorded_by).filter(Boolean))];
+
+  // Get unique payment methods for filter dropdown
+  const uniquePaymentMethods = [...new Set(financials.map(f => f.payment_method).filter(Boolean))];
 
   // Calculate financial statistics based on filtered data
   const financialStats = {
@@ -151,6 +157,26 @@ const FinancialsPage = () => {
                     {uniqueRecordedBy.map((person) => (
                       <SelectItem key={person} value={person}>
                         {person}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Filter by Payment Method:</span>
+                <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Methods" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Methods</SelectItem>
+                    {uniquePaymentMethods.map((method) => (
+                      <SelectItem key={method} value={method}>
+                        {method === 'momo' ? 'Mobile Money' : 
+                         method === 'bank_transfer' ? 'Bank Transfer' : 
+                         method === 'cash' ? 'Cash' : 
+                         method === 'check' ? 'Check' : 
+                         method === 'card' ? 'Card' : method}
                       </SelectItem>
                     ))}
                   </SelectContent>
