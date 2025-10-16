@@ -26,7 +26,9 @@ import type {
   Purchase,
   CreatePurchaseRequest,
   Pledge,
-  CreatePledgeRequest
+  CreatePledgeRequest,
+  PledgeFulfillment,
+  CreatePledgeFulfillmentRequest
 } from './types';
 
 // Create axios instance
@@ -458,6 +460,21 @@ export const pledgesApi = {
       data: { status, camp_id: campId } 
     });
     return response.data.data;
+  },
+
+  // Pledge Fulfillments
+  getPledgeFulfillments: async (pledgeId: string, campId: string): Promise<PledgeFulfillment[]> => {
+    const response = await api.get<ApiResponse<PledgeFulfillment[]>>(`/camps/pledges/${pledgeId}/fulfillments?camp_id=${campId}`);
+    return response.data.data;
+  },
+
+  addPledgeFulfillment: async (pledgeId: string, campId: string, data: CreatePledgeFulfillmentRequest): Promise<PledgeFulfillment> => {
+    const response = await api.post<ApiResponse<PledgeFulfillment>>(`/camps/pledges/${pledgeId}/fulfillments?camp_id=${campId}`, { data });
+    return response.data.data;
+  },
+
+  deletePledgeFulfillment: async (fulfillmentId: string, campId: string): Promise<void> => {
+    await api.delete(`/camps/pledge-fulfillments/${fulfillmentId}?camp_id=${campId}`);
   },
 };
 

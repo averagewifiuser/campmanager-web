@@ -23,14 +23,56 @@ const PledgesPage = () => {
 
   // Calculate pledge statistics
   const pledgeStats = {
-    totalAmount: pledges.reduce((sum, pledge) => sum + pledge.amount, 0),
+    totalAmount: pledges.reduce((sum, pledge) => {
+      const amount = typeof pledge.amount === 'number' ? pledge.amount : parseFloat(pledge.amount) || 0;
+      return sum + amount;
+    }, 0),
+    totalFulfilled: pledges.reduce((sum, pledge) => {
+      const fulfilled = typeof pledge.fulfilled_amount === 'number' 
+        ? pledge.fulfilled_amount 
+        : parseFloat(pledge.fulfilled_amount) || 0;
+      return sum + fulfilled;
+    }, 0),
+    totalOutstanding: pledges.reduce((sum, pledge) => {
+      const amount = typeof pledge.amount === 'number' ? pledge.amount : parseFloat(pledge.amount) || 0;
+      const fulfilled = typeof pledge.fulfilled_amount === 'number' 
+        ? pledge.fulfilled_amount 
+        : parseFloat(pledge.fulfilled_amount) || 0;
+      
+      // Use outstanding_balance if available, otherwise calculate it
+      let outstanding;
+      if (pledge.outstanding_balance !== undefined && pledge.outstanding_balance !== null) {
+        outstanding = typeof pledge.outstanding_balance === 'number' 
+          ? pledge.outstanding_balance 
+          : parseFloat(pledge.outstanding_balance) || 0;
+      } else {
+        outstanding = amount - fulfilled;
+      }
+      return sum + Math.max(0, outstanding); // Ensure non-negative values
+    }, 0),
     totalPledges: pledges.length,
-    averagePledge: pledges.length > 0 ? pledges.reduce((sum, pledge) => sum + pledge.amount, 0) / pledges.length : 0,
-    pledgesByStatus: pledges.reduce((acc, pledge) => {
-      const status = pledge.status;
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>),
+    fulfilledPledges: pledges.filter(p => p.status === 'fulfilled' || p.is_fully_fulfilled).length,
+    partiallyFulfilledPledges: pledges.filter(p => {
+      const fulfilled = typeof p.fulfilled_amount === 'number' 
+        ? p.fulfilled_amount 
+        : parseFloat(p.fulfilled_amount) || 0;
+      return p.status === 'pending' && fulfilled > 0;
+    }).length,
+    pendingPledges: pledges.filter(p => {
+      const fulfilled = typeof p.fulfilled_amount === 'number' 
+        ? p.fulfilled_amount 
+        : parseFloat(p.fulfilled_amount) || 0;
+      return p.status === 'pending' && fulfilled === 0;
+    }).length,
+    cancelledPledges: pledges.filter(p => p.status === 'cancelled').length,
+    averageFulfillmentRate: pledges.length > 0 
+      ? pledges.reduce((sum, pledge) => {
+          const rate = typeof pledge.fulfillment_percentage === 'number' 
+            ? pledge.fulfillment_percentage 
+            : parseFloat(pledge.fulfillment_percentage) || 0;
+          return sum + rate;
+        }, 0) / pledges.length 
+      : 0,
     recentPledges: pledges.filter(pledge => {
       const pledgeDate = new Date(pledge.created_at);
       const sevenDaysAgo = new Date();
@@ -188,15 +230,15 @@ const PledgesPage = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Pledge</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Fulfilled</CardTitle>
                     <TrendingUp className="h-4 w-4 text-blue-600" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(pledgeStats.averagePledge)}
+                      {formatCurrency(pledgeStats.totalFulfilled)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Per pledge
+                      {Math.round(pledgeStats.averageFulfillmentRate)}% average rate
                     </p>
                   </CardContent>
                 </Card>
@@ -218,15 +260,15 @@ const PledgesPage = () => {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Pending Pledges</CardTitle>
+                    <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
                     <Users className="h-4 w-4 text-orange-600" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-orange-600">
-                      {pledgeStats.pledgesByStatus.pending || 0}
+                      {formatCurrency(pledgeStats.totalOutstanding)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Awaiting fulfillment
+                      {pledgeStats.pendingPledges + pledgeStats.partiallyFulfilledPledges} pending
                     </p>
                   </CardContent>
                 </Card>
@@ -237,6 +279,11 @@ const PledgesPage = () => {
                 pledges={pledges} 
                 isLoading={loading} 
                 onStatusUpdate={handleStatusUpdate}
+                onPledgeUpdate={async () => {
+                  // Refetch pledges after fulfillment changes
+                  const updatedPledges = await pledgesApi.getCampPledges(campId!);
+                  setPledges(updatedPledges || []);
+                }}
                 campId={campId}
               />
             </>

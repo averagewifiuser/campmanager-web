@@ -305,9 +305,30 @@ export interface Pledge {
   camper_id: string;
   camper_name: string;
   camper_code: string;
+  camper_phone_number: string;
   amount: number;
-  status: string;
+  fulfilled_amount: number;
+  outstanding_balance: number;
+  fulfillment_percentage: number;
+  is_fully_fulfilled: boolean;
+  status: 'pending' | 'fulfilled' | 'cancelled';
   pledge_date: string;
+  notes?: string;
+  fulfillments?: PledgeFulfillment[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PledgeFulfillment {
+  id: string;
+  pledge_id: string;
+  amount: number;
+  fulfillment_date: string;
+  payment_method: 'momo' | 'cash' | 'cheque' | 'bank_transfer' | 'card';
+  recorded_by: string;
+  reference_number?: string;
+  notes?: string;
+  camp_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -316,4 +337,12 @@ export interface CreatePledgeRequest {
   amount: string;
   camper_id: string;
   status: 'pending';
+  notes?: string;
+}
+
+export interface CreatePledgeFulfillmentRequest {
+  amount: string;
+  payment_method: 'momo' | 'cash' | 'cheque' | 'bank_transfer' | 'card';
+  reference_number?: string;
+  notes?: string;
 }
